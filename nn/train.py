@@ -7,26 +7,33 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 from matplotlib import pyplot as plt
-
+import numpy as np
 from dataclasses import dataclass 
 import tyro
-
-torch.manual_seed(42)
+import os
+torch.backends.cudnn.deterministic=True
 
 @dataclass
 class Args:
-    data_dir: str = '/scratch/kaustab.pal/dataset/' # 'data/dataset_beta/'
+    dataset_dir: str = '/scratch/kaustab.pal/iros_23/dataset/' # 'data/dataset_beta/'
+    weights_dir: str = '/scratch/kaustab.pal/iros_23/weights/' 
+    loss_dir: str = '/scratch/kaustab.pal/iros_23/loss/' 
     val_split: float = 0.3
-    seed: int = 42
+    num_epochs: int = 1000
+    seed: int = 12321
     exp_id: str = 'exp1'
 args = tyro.cli(Args)
 
 
 def main():
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed(args.seed)
+    os.makedirs(args.weights_dir, exist_ok=True)
+    os.makedirs(args.loss_dir, exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Device: ",device)
     ### Datset Setup ####
-    dataset = Im2ControlsDataset(data_dir=args.data_dir)
+    dataset = Im2ControlsDataset(dataset_dir=args.dataset_dir)
     total_size = len(dataset)
     test_size = int(total_size * 0.0)
     val_size = int(total_size * args.val_split)
@@ -35,15 +42,13 @@ def main():
             dataset, [train_size, val_size, test_size], torch.Generator().manual_seed(args.seed)
         )
     
-    g = torch.Generator()
-    g.manual_seed(0)
     train_dataloader = DataLoader(train_ds, batch_size=32, shuffle=True, num_workers=0)
     val_dataloader = DataLoader(val_ds, batch_size=32, shuffle=True, num_workers=0)
     # test_dataloader = DataLoader(test_ds, batch_size=4, shuffle=True, num_workers=0)
 
     ### Hyper Params ###
     learning_rate = 0.001
-    num_epochs = 500
+    num_epochs = args.num_epochs #10 #500
     save_step = 100
 
     model = Model1().to(device)
@@ -134,19 +139,23 @@ def main():
         # print("Epoch: {}. Loss train: {}. Loss Validation: {}".format(i, average_tloss, average_vloss))
         if(average_v_loss+average_w_loss < best_vloss): # Saving best model
         #    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            model_path = '/scratch/kaustab.pal/dataset/weights/model_{}.pt'.format(args.exp_id)
+            model_path = args.weights_dir + 'model_{}.pt'.format(args.exp_id)
             torch.save(model.state_dict(), model_path)
             best_vloss = average_v_loss+average_w_loss
             print("########## MODEL-SAVED #########")
 
     ########### Finishing Epochs ##############
-    
+    plt_path = args.loss_dir + 'model_{}.png'.format(args.exp_id)
+    np.save(args.loss_dir + 'model_{}_v_train_loss'.format(args.exp_id),train_v_loss)
+    np.save(args.loss_dir + 'model_{}_w_train_loss'.format(args.exp_id),train_w_loss)
+    np.save(args.loss_dir + 'model_{}_v_val_loss'.format(args.exp_id),val_v_loss)
+    np.save(args.loss_dir + 'model_{}_w_val_loss'.format(args.exp_id),val_w_loss)
     plt.plot(train_v_loss, label="train v loss")
     plt.plot(train_w_loss, label="train w loss")
     plt.plot(val_v_loss, label="val v loss")
     plt.plot(val_w_loss, label="val w loss")
     plt.legend(loc="upper right")
-    plt.savefig('losscurve.png')
+    plt.savefig(plt_path)
 
 if __name__ == "__main__":
     main()

@@ -6,9 +6,9 @@ import pickle
 
 
 class Im2ControlsDataset(Dataset):
-    def __init__(self, data_dir, transform=None):
-        self.occ_map_dir = data_dir+'occ_map/'
-        self.controls_dir = data_dir+'mean_controls/'
+    def __init__(self, dataset_dir, transform=None):
+        self.occ_map_dir = dataset_dir+'occ_map/'
+        self.controls_dir = dataset_dir+'mean_controls/'
         self.occ_map_files = [f for f in os.listdir(self.occ_map_dir) if not f.startswith('.')] 
         self.controls_files = [f for f in os.listdir(self.controls_dir) if not f.startswith('.')]
         self.len = len(self.occ_map_files)

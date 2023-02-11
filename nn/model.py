@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
-torch.manual_seed(42)
+torch.manual_seed(12321)
 
 class Model1(nn.Module):
     '''
@@ -22,15 +22,15 @@ class Model1(nn.Module):
             # Fully Connected
             self.linear = nn.Sequential(
                 nn.Dropout(0.2),
-                
+                nn.Linear(1280, 1280),
+                nn.BatchNorm1d(1280),
+                nn.ReLU(True),
                 nn.Linear(1280, 256),
                 nn.BatchNorm1d(256),
                 nn.ReLU(True),
-                
                 nn.Linear(256, 128),
                 nn.BatchNorm1d(128),
                 nn.ReLU(True),
-                
                 nn.Linear(128,60)
             )
 
