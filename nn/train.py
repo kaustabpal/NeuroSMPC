@@ -11,7 +11,7 @@ import numpy as np
 from dataclasses import dataclass 
 import tyro
 import os
-torch.backends.cudnn.deterministic=True
+# torch.backends.cudnn.deterministic=True
 
 @dataclass
 class Args:
