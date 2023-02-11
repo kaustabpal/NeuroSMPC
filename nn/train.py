@@ -15,19 +15,17 @@ torch.manual_seed(42)
 
 @dataclass
 class Args:
-    data_dir: str = 'data/dataset_beta/'
+    data_dir: str = '/scratch/kaustab.pal/dataset/' # 'data/dataset_beta/'
     val_split: float = 0.3
     seed: int = 42
     exp_id: str = 'exp1'
 args = tyro.cli(Args)
 
 
-
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Device: ",device)
     ### Datset Setup ####
-    print("test.")
     dataset = Im2ControlsDataset(data_dir=args.data_dir)
     total_size = len(dataset)
     test_size = int(total_size * 0.0)
@@ -37,13 +35,15 @@ def main():
             dataset, [train_size, val_size, test_size], torch.Generator().manual_seed(args.seed)
         )
     
-    train_dataloader = DataLoader(train_ds, batch_size=8, shuffle=True, num_workers=0)
-    val_dataloader = DataLoader(val_ds, batch_size=8, shuffle=True, num_workers=0)
+    g = torch.Generator()
+    g.manual_seed(0)
+    train_dataloader = DataLoader(train_ds, batch_size=32, shuffle=True, num_workers=0)
+    val_dataloader = DataLoader(val_ds, batch_size=32, shuffle=True, num_workers=0)
     # test_dataloader = DataLoader(test_ds, batch_size=4, shuffle=True, num_workers=0)
 
     ### Hyper Params ###
-    learning_rate = 0.0001
-    num_epochs = 10
+    learning_rate = 0.001
+    num_epochs = 500
     save_step = 100
 
     model = Model1().to(device)
@@ -51,7 +51,7 @@ def main():
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(params, lr=learning_rate)
     scheduler = CosineAnnealingLR(optimizer,
-                                T_max = 50, # Maximum number of iterations.
+                                T_max = 400, # Maximum number of iterations.
                                 eta_min = 1e-5, verbose= True)
 
 
@@ -85,7 +85,8 @@ def main():
 
             optimizer.zero_grad()
             v_loss = criterion(v_pred, v_gt)
-            w_loss = criterion(w_pred*torch.tensor([57.2958],requires_grad=True), w_gt*torch.tensor([57.2958],requires_grad=True))
+            w_loss = criterion(w_pred*torch.tensor([57.2958], device=device, requires_grad=True), \
+                    w_gt*torch.tensor([57.2958], device=device, requires_grad=True))
             loss = v_loss + w_loss #criterion(pred_controls, controls)
             loss.backward()
             optimizer.step()
@@ -114,7 +115,8 @@ def main():
                 v_pred = pred_controls[:,v_idx]
                 w_pred = pred_controls[:,w_idx]
                 v_loss = criterion(v_pred, v_gt)
-                w_loss = criterion(w_pred*torch.tensor([57.2958],requires_grad=True), w_gt*torch.tensor([57.2958],requires_grad=True))
+                w_loss = criterion(w_pred*torch.tensor([57.2958], device=device, requires_grad=True), \
+                        w_gt*torch.tensor([57.2958], device=device, requires_grad=True))
                 loss = v_loss + w_loss #criterion(pred_controls, controls)
                 running_v_loss += v_loss.item()
                 running_w_loss += w_loss.item()
@@ -132,14 +134,15 @@ def main():
         # print("Epoch: {}. Loss train: {}. Loss Validation: {}".format(i, average_tloss, average_vloss))
         if(average_v_loss+average_w_loss < best_vloss): # Saving best model
         #    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            model_path = 'data/model_{}.pt'.format(args.exp_id)
+            model_path = '/scratch/kaustab.pal/dataset/weights/model_{}.pt'.format(args.exp_id)
             torch.save(model.state_dict(), model_path)
             best_vloss = average_v_loss+average_w_loss
+            print("########## MODEL-SAVED #########")
 
     ########### Finishing Epochs ##############
     
     plt.plot(train_v_loss, label="train v loss")
-    plt.plot(train_w_loss, label="train v loss")
+    plt.plot(train_w_loss, label="train w loss")
     plt.plot(val_v_loss, label="val v loss")
     plt.plot(val_w_loss, label="val w loss")
     plt.legend(loc="upper right")
