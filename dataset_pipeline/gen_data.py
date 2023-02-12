@@ -11,6 +11,7 @@ import os
 from utils import rotate
 from utils import draw_circle
 from frenet_transformations import global_traj, global_to_frenet, frenet_to_global
+import argparse
 torch.manual_seed(42)
 
 def to_continuous(obs):
@@ -35,13 +36,18 @@ def to_continuous(obs):
 
 def run():
     np.set_printoptions(suppress=True)
+    argParser = argparse.ArgumentParser()
+    argParser.add_argument("-d", "--dataset_dir", help="dataset_dir")
+    argParser.add_argument("-p", "--plot_im_dir", help="plot_image_dir")
+    argParser.add_argument("-m", "--mean_dir", help="mean_controls_dir")
+    args = argParser.parse_args()
     # dataset_dir = "storm/"
-    dataset_dir = "occ_map/"
-    plot_im_dir = "plot_im/"
-    mean_dir = "mean_controls/"
+    dataset_dir = args.dataset_dir
+    plot_im_dir = args.plot_im_dir
+    mean_dir = args.mean_dir
     files = os.listdir(dataset_dir)
     print(len(files)-1)
-    for i in range(1,len(files)-1):
+    for i in range(0,len(files)):
         t_1 = time.time()
         print(i)
         obs_pos = []
@@ -64,7 +70,7 @@ def run():
         
         obs_pos_frenet = global_to_frenet(obs_pos, new_g_path, g_path)
 
-        sampler = Goal_Sampler(torch.tensor([0,0,np.deg2rad(90)]), 4.13, 0, obstacles=obs_pos_frenet)
+        sampler = Goal_Sampler(torch.tensor([0,0,np.deg2rad(ego_theta)]), 4.13, 0, obstacles=obs_pos_frenet)
         t1 = time.time()
         sampler.plan_traj()
         # print("Planning time: ", time.time()-t1)
@@ -81,7 +87,7 @@ def run():
         sampler.mean_action = torch.as_tensor(mean_controls)
         sampler.c_state = torch.tensor([0,0,np.deg2rad(90)])
         sampler.infer_traj()
-        np.save(mean_save_filename,sampler.best_traj)
+        np.save(mean_save_filename,sampler.mean_action)
         
         ## plot
         # for k in range(g_path.shape[0]):
@@ -94,6 +100,7 @@ def run():
         # print(obs_pos[:][:,0])
         
         plt.plot(obs_pos[:,0], obs_pos[:,1], 'k.')
+        plt.scatter(obs_pos_frenet[:,0], obs_pos_frenet[:,1], color='orange')
             
         # for j in range(sampler.traj_N.shape[0]):
         plt.plot(sampler.traj_N[:,:,0], sampler.traj_N[:,:,1], 'r', alpha=0.1)

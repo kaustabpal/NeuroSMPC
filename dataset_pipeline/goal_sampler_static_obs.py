@@ -183,7 +183,7 @@ class Goal_Sampler:
         state = state + a@controls.float()*self.dt
         return state
     
-    def rollout(self,s_w=1):
+    def rollout(self, s_o = 10, s_s = 10, s_c=1):
         t_r = time.time()
         self.goal_region_cost_N = torch.zeros((self.traj_N.shape[0]))
         self.left_lane_bound_cost_N = torch.zeros((self.traj_N.shape[0]))
@@ -225,7 +225,7 @@ class Goal_Sampler:
             self.ang_vel_cost_N[i] = torch.sum(torch.diff(self.controls_N[i,:,1])**2) #torch.norm(self.controls_N[i,:,1])
             
             # center-line cost
-            # self.center_line_cost_N[i] += torch.linalg.norm(self.traj_N[i,:,0]-0)
+            self.center_line_cost_N[i] += torch.linalg.norm(self.traj_N[i,:,0]-0)
             
             # Obstacle avoidance
             t1 = time.time()
@@ -256,7 +256,7 @@ class Goal_Sampler:
             # else:
             #     self.goal_region_cost_N[i] = copy.deepcopy(dist)
                 
-        self.total_cost_N = s_w*self.ang_vel_cost_N + 1*self.collision_cost_N + 0*self.center_line_cost_N
+        self.total_cost_N = s_s*self.ang_vel_cost_N + s_o*self.collision_cost_N + s_c*self.center_line_cost_N
         top_values, top_idx = torch.topk(self.total_cost_N, self.top_K, largest=False, sorted=True)
         self.top_trajs = torch.index_select(self.traj_N, 0, top_idx)
         top_controls = torch.index_select(self.controls_N, 0, top_idx)
@@ -336,12 +336,12 @@ class Goal_Sampler:
     
     def infer_traj(self):
         t1 = time.time()
-        self.init_cov_action = torch.tensor([0.05, 0.05])
+        self.init_cov_action = torch.tensor([0.01, 0.01])
         self.cov_action = self.init_cov_action
         self.scale_tril = torch.sqrt(self.cov_action)
         self.full_scale_tril = torch.diag(self.scale_tril)
         self.sample_controls()
-        top_w, top_controls = self.rollout(s_w = 1)   
+        top_w, top_controls = self.rollout(s_o = 1, s_s = 1, s_c = 0)   
     
     def get_vel(self, u):
         v1 = self.vl
@@ -354,62 +354,4 @@ class Goal_Sampler:
             w1 = v[1,i]       
         return v
                 
-    
-# if __name__ == '__main__':
-#     dtype = torch.float32
-#     c_state = torch.tensor([-6, 0, np.deg2rad(90)], dtype=dtype).view(3,1)
-#     g_state = torch.tensor([-6, 50, np.deg2rad(90)], dtype=dtype).view(3,1)
-#     vl = 5
-#     wl = 0
-#     obs1 = np.array([-6,30, np.deg2rad(90)])
-#     obs2 = np.array([-2,10, np.deg2rad(90)])
-#     obs3 = np.array([-2,14, np.deg2rad(90)])
-#     obstacles = [obs1] #, obs2, obs3]
-#     y_lane = np.arange(-1000,1000)
-#     x1_l_lane = -4*np.ones(y_lane.shape)
-#     x1_m_lane = -2*np.ones(y_lane.shape)
-#     x1_r_lane = 0*np.ones(y_lane.shape)
-#     x2_m_lane = -6*np.ones(y_lane.shape)
-#     x2_l_lane = -8*np.ones(y_lane.shape)
-    
-#     sampler = Goal_Sampler(c_state, g_state, vl, wl, obstacles=obstacles)
-    
-#     top_w, top_controls = sampler.get_cost()
-#     for k in range(550):
-#         plt.plot(x1_r_lane,y_lane, 'k', linewidth=1)
-#         plt.plot(x1_m_lane, y_lane, 'k', linestyle="dotted", linewidth=1)
-#         plt.plot(x1_l_lane,y_lane, 'k', linewidth=1)
-#         plt.plot(x2_m_lane, y_lane, 'k', linestyle="dotted", linewidth=1)
-#         plt.plot(x2_l_lane,y_lane, 'k', linewidth=1)
-#         plt.plot(obs1[0], obs1[1],'or')
-#         t1 = time.time()
-#         sampler.cov_action = sampler.init_cov_action
-#         sampler.scale_tril = torch.sqrt(sampler.cov_action)
-#         sampler.full_scale_tril = torch.diag(sampler.scale_tril)
-#         for i in range(2):
-#             sampler.update_distribution(top_w, top_controls)
-#             sampler.scale_tril = torch.sqrt(sampler.cov_action)
-#             sampler.full_scale_tril = torch.diag(sampler.scale_tril)
-#             sampler.sample_controls()
-#             sampler.rollout()
-#             top_w, top_controls = sampler.get_cost()
-#         # print(time.time()-t1)
-#         # print(k, sampler.traj_N.shape)
-#         for j in range(sampler.traj_N.shape[0]):
-#                 plt.plot(sampler.traj_N[j,:,0], sampler.traj_N[j,:,1],'.-', alpha=0.05)
-#         plt.plot(sampler.top_trajs[0,:,0], sampler.top_trajs[0,:,1], '.-r')
-#         utils.draw_balls(sampler.balls)
-#         plt.plot(g_state[0,0],g_state[1,0],'rx')
-#         plt.xlim([-35, 35])
-#         plt.ylim([-10, 40])
-#         plt.title(str(k))
-#         # plt.ylim([-0.7, 0.7])
-#         plt.pause(1/120)   
-#         plt.clf() 
-#         sampler.c_state = sampler.top_trajs[0,1,:]
-#         # print(sampler.top_trajs[0,:,:])
-#         sampler.mean_action[:-1,:] = sampler.mean_action[1:,:].clone()
-#         sampler.mean_action[-1,:] = sampler.init_mean[-1,:].clone()
-        
-        
     
