@@ -39,16 +39,16 @@ for i in range(2,len(files)-1):
                 sys.exit()
             # checking if keydown event happened or not
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_t: # training set
-                    shutil.copy(bev_file_name, train_dir+bev_file_name)
-                    shutil.copy(im_file_name, train_dir+im_file_name)
-                    shutil.copy(mean_file_name, train_dir+mean_file_name)
-                    flag = False
-                if event.key == pygame.K_i: # test set
-                    shutil.copy(bev_file_name, test_dir+bev_file_name)
-                    shutil.copy(im_file_name, test_dir+im_file_name)
-                    shutil.copy(mean_file_name, test_dir+mean_file_name)
-                    flag = False
+                # if event.key == pygame.K_t: # training set
+                #     shutil.copy(bev_file_name, train_dir+bev_file_name)
+                #     shutil.copy(im_file_name, train_dir+im_file_name)
+                #     shutil.copy(mean_file_name, train_dir+mean_file_name)
+                #     flag = False
+                # if event.key == pygame.K_i: # test set
+                #     shutil.copy(bev_file_name, test_dir+bev_file_name)
+                #     shutil.copy(im_file_name, test_dir+im_file_name)
+                #     shutil.copy(mean_file_name, test_dir+mean_file_name)
+                #     flag = False
                 if event.key == pygame.K_n: # training set
                     flag = False
                 if event.key == pygame.K_d: # training set
