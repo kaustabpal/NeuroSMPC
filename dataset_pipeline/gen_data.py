@@ -68,7 +68,7 @@ def run():
         ego_theta = np.rad2deg(np.pi/2 + (np.pi/2 - theta[0]))
         # print(ego_theta)
         
-        obs_pos_frenet = global_to_frenet(obs_pos, new_g_path, g_path)
+        obs_pos_frenet = global_to_frenet(obs_pos, new_g_path, interpolated_g_path)
 
         sampler = Goal_Sampler(torch.tensor([0,0,np.deg2rad(ego_theta)]), 4.13, 0, obstacles=obs_pos_frenet)
         t1 = time.time()
