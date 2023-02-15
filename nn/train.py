@@ -15,11 +15,11 @@ import os
 
 @dataclass
 class Args:
-    dataset_dir: str = '/scratch/kaustab.pal/iros_23/dataset/' # 'data/dataset_beta/'
-    weights_dir: str = '/scratch/kaustab.pal/iros_23/weights/' 
-    loss_dir: str = '/scratch/kaustab.pal/iros_23/loss/' 
+    dataset_dir: str = '/scratch/kaustab.pal/iros_23/dataset/' #'../iros_23/dataset/' #'/scratch/kaustab.pal/iros_23/dataset/' # 'data/dataset_beta/'
+    weights_dir: str = '/scratch/kaustab.pal/iros_23/weights/' #'../iros_23/weights/' #'/scratch/kaustab.pal/iros_23/weights/' 
+    loss_dir: str = '/scratch/kaustab.pal/iros_23/loss/'  #'../iros_23/loss/' #'/scratch/kaustab.pal/iros_23/loss/' 
     val_split: float = 0.3
-    num_epochs: int = 1000
+    num_epochs: int = 500
     seed: int = 12321
     exp_id: str = 'exp1'
 args = tyro.cli(Args)

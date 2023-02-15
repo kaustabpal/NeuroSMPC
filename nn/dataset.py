@@ -3,14 +3,21 @@ from torch.utils.data import Dataset
 import numpy as np
 import os
 import pickle
+from natsort import natsorted, ns
 
 
 class Im2ControlsDataset(Dataset):
     def __init__(self, dataset_dir, transform=None):
         self.occ_map_dir = dataset_dir+'occ_map/'
         self.controls_dir = dataset_dir+'mean_controls/'
-        self.occ_map_files = [f for f in os.listdir(self.occ_map_dir) if not f.startswith('.')] 
-        self.controls_files = [f for f in os.listdir(self.controls_dir) if not f.startswith('.')]
+        self.occ_map_files_unsorted = [f for f in os.listdir(self.occ_map_dir) if not f.startswith('.')] 
+        self.controls_files_unsorted = [f for f in os.listdir(self.controls_dir) if not f.startswith('.')]
+        self.occ_map_files =natsorted(self.occ_map_files_unsorted, key=lambda y: y.lower())
+        self.controls_files =natsorted(self.controls_files_unsorted, key=lambda y: y.lower())
+        # print(self.occ_map_files[0], self.controls_files[0])
+        # print(self.occ_map_files[1], self.controls_files[1])
+        # print(self.occ_map_files[5], self.controls_files[5])
+        # quit()
         self.len = len(self.occ_map_files)
 
     def __len__(self):
