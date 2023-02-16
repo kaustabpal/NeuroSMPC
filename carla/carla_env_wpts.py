@@ -12,8 +12,8 @@ import cv2
 
 import logging
 
-from agents.navigation.basic_agent import BasicAgent
-from agents.navigation.behavior_agent import BehaviorAgent
+# from agents.navigation.basic_agent import BasicAgent
+# from agents.navigation.behavior_agent import BehaviorAgent
 
 from utils.custom_pid import PID
 
@@ -231,7 +231,7 @@ class CarEnv(gym.Env):
         self.speed_ego = speed_ego
         return observation
 
-    def step(self, action):
+    def step(self, trajectory, target_speed):
 
         self.frame += 1
 
@@ -240,33 +240,16 @@ class CarEnv(gym.Env):
         vel_ego = self.ego.get_velocity()
         speed_ego = np.linalg.norm(np.array([vel_ego.x, vel_ego.y]))
         
-        next_wpts = []
-        r_x = 0
-        r_y = 0   
-        theta = 0
-        for i in range(int(len(action) / 2)):
-            # v, delta = action[2*i], action[2*i+1]
-            # r_x = r_x + v * np.cos(theta) * self.predict_dt
-            # r_y = r_y + v * np.sin(theta) * self.predict_dt
-            # theta = theta + v * np.tan(delta) * self.predict_dt / self.L
-            
-            # x = r_x
-            # y = r_y
-
-            x, y = action[2*i], action[2*i+1]
-
-            # logging.debug("v: %s, delta - %s -- x : %s, y : %s, theta : %s", np.round(v, 2), np.round(delta, 2), np.round(x, 2), np.round(y, 2), np.round(theta, 2))
-            next_wpts.append([x, y, theta])
-
+        
         self.stanley.set_current_speed(speed)
-        # self.set_target_speed(target_speed)
+        self.set_target_speed(target_speed)
 
         try:
-            self.stanley.set_waypoints(next_wpts)
+            self.stanley.set_waypoints(trajectory)
         except Exception as e:
             print(e)
             print("Actions - ", np.round(action, 2))
-            print("Next Waypoints : ", np.round(next_wpts,2))
+            print("Next Waypoints : ", np.round(trajectory,2))
             exit()
 
         action, ret_val = self.stanley.get_controls()

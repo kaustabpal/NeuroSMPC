@@ -77,4 +77,7 @@ class DeXBee:
         best_controls = sampler.top_controls[0,:,:] # contains the best v and w
         best_traj = sampler.top_trajs[0,:,:] # contains the best x, y and theta
 
+        best_traj = best_traj.detach().cpu().numpy()
+        best_controls = best_controls.detach().cpu().numpy()
+        
         return best_traj, best_controls

@@ -34,6 +34,7 @@ def run():
         best_path = np.array(best_path)
         best_controls = np.array(best_controls)
 
+        target_speed = best_controls[0,0]
         print("Best path: ", best_path)
         print("Best path length: ", len(best_path))
         print("Best Path shape: ", best_path.shape)
@@ -44,9 +45,11 @@ def run():
         print("Best controls length: ", len(best_controls))
         print("Best controls shape: ", best_controls.shape)
 
-
+        cv2.imshow("BEV", bev)
+        cv2.waitKey(0)
+        
         exit(1)
-        obs, reward, done, info = env.step(best_path)
+        obs, reward, done, info = env.step(best_path, target_speed=target_speed)
         env.render()
 
         bev = env.bev
