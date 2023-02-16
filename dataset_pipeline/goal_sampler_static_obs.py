@@ -17,7 +17,7 @@ class Goal_Sampler:
     def __init__(self, c_state, vl, wl, obstacles, num_particles = 500):
         # agent info
         self.balls = []
-        self.radius = 1.80
+        self.radius = 1.80 # 2.5 for Tesla
         self.c_state = c_state # start state
         # self.g_state = g_state # goal state
         self.step_size_mean = 0.7
