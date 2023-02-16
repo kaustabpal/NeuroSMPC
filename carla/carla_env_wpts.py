@@ -10,6 +10,8 @@ import random
 
 import cv2
 
+import logging
+
 from agents.navigation.basic_agent import BasicAgent
 from agents.navigation.behavior_agent import BehaviorAgent
 
@@ -58,11 +60,26 @@ class CarEnv(gym.Env):
         # GYM env
         ##########
 
+        self.L = 1.9
+        self.predict_dt = 1
+
+        min_speed = 0.5
+        max_speed = 4
+        max_steer = 0.5
+
+        max_x, min_x = 100, -100
+        max_y, min_y = 100, -100
+        
         # Define action and observation space
         # They must be gym.spaces objects
+        # self.action_space = spaces.Box(
+        #     low=np.array([min_speed, -max_steer, min_speed, -max_steer, min_speed, -max_steer, min_speed, -max_steer, min_speed, -max_steer, min_speed, -max_steer]),
+        #     high=np.array([max_speed, max_steer, max_speed, max_steer, max_speed, max_steer, max_speed, max_steer, max_speed, max_steer, max_speed, max_steer]),
+        #     dtype=np.float32
+        # )
         self.action_space = spaces.Box(
-            low=np.array([0.2, -0.3]),
-            high=np.array([0.6, 0.3]),
+            low=np.array([min_x, min_y, min_x, min_y, min_x, min_y, min_x, min_y, min_x, min_y, min_x, min_y]),
+            high=np.array([max_x, max_y, max_x, max_y, max_x, max_y, max_x, max_y, max_x, max_y, max_x, max_y]),
             dtype=np.float32
         )
 
@@ -223,19 +240,41 @@ class CarEnv(gym.Env):
         vel_ego = self.ego.get_velocity()
         speed_ego = np.linalg.norm(np.array([vel_ego.x, vel_ego.y]))
         
-        target_speed = action[0]
+        next_wpts = []
+        r_x = 0
+        r_y = 0   
+        theta = 0
+        for i in range(int(len(action) / 2)):
+            # v, delta = action[2*i], action[2*i+1]
+            # r_x = r_x + v * np.cos(theta) * self.predict_dt
+            # r_y = r_y + v * np.sin(theta) * self.predict_dt
+            # theta = theta + v * np.tan(delta) * self.predict_dt / self.L
+            
+            # x = r_x
+            # y = r_y
 
-        acc = self.speed_pid.get_output(target_speed, speed_ego, dt = 0.1)
+            x, y = action[2*i], action[2*i+1]
 
-        if acc > 0:
-            throttle = acc
-            brake = 0
-        else:
-            throttle = 0
-            brake = abs(acc)
+            # logging.debug("v: %s, delta - %s -- x : %s, y : %s, theta : %s", np.round(v, 2), np.round(delta, 2), np.round(x, 2), np.round(y, 2), np.round(theta, 2))
+            next_wpts.append([x, y, theta])
 
-        steer = action[1]
-        
+        self.stanley.set_current_speed(speed)
+        # self.set_target_speed(target_speed)
+
+        try:
+            self.stanley.set_waypoints(next_wpts)
+        except Exception as e:
+            print(e)
+            print("Actions - ", np.round(action, 2))
+            print("Next Waypoints : ", np.round(next_wpts,2))
+            exit()
+
+        action, ret_val = self.stanley.get_controls()
+
+        throttle = action[0]
+        brake = action[1]
+        steer = action[2]      
+
         self.ego.apply_control(carla.VehicleControl(
             throttle=float(throttle), steer=float(steer), brake=float(brake)))
         # print(action)
