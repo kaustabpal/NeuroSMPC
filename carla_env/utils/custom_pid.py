@@ -1,4 +1,4 @@
-import utils.PID as simple_pid
+import carla_env.utils.PID as simple_pid
 
 
 class PID:
@@ -21,7 +21,7 @@ class PID:
 
     def get_output(self, SP, MV, dt):
         if self.SP != SP:
-            print('[INFO] ' + self.name + ': Set point changed to '+ str(SP) +', recreating pid instance')
+            # print('[INFO] ' + self.name + ': Set point changed to '+ str(SP) +', recreating pid instance')
             self.SP = SP
             self.create_pid_instance()
         return self.pid_instance(MV, dt=dt)

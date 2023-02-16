@@ -2,7 +2,7 @@ import gym
 from gym import spaces
 import carla
 import numpy as np
-from utils.transforms import se3_to_components
+from carla_env.utils.transforms import se3_to_components
 import time
 import atexit
 
@@ -15,7 +15,8 @@ import logging
 # from agents.navigation.basic_agent import BasicAgent
 # from agents.navigation.behavior_agent import BehaviorAgent
 
-from utils.custom_pid import PID
+from carla_env.utils.custom_pid import PID
+from carla_env.utils.stanley_controller import Stanley
 
 DEBUG = False
 
@@ -106,7 +107,7 @@ class CarEnv(gym.Env):
         # Settin Up the World
         client = carla.Client('127.0.0.1', 2000)
         client.set_timeout(10.0)
-        client.load_world('Town04')
+        client.load_world('Town03')
         self.world = client.get_world()
         settings = self.world.get_settings()
         settings.synchronous_mode = True
@@ -170,7 +171,11 @@ class CarEnv(gym.Env):
         self.bev = None
         self.obstacle_bev = None
         self.next_g_path = None
-        
+
+        # Stanley Controller
+        self.stanley = Stanley()
+
+
         # Global Path
         self.global_path = None
         self.global_path_tf = None
@@ -241,15 +246,15 @@ class CarEnv(gym.Env):
         speed_ego = np.linalg.norm(np.array([vel_ego.x, vel_ego.y]))
         
         
-        self.stanley.set_current_speed(speed)
-        self.set_target_speed(target_speed)
+        self.stanley.set_current_speed(speed_ego)
+        self.stanley.set_target_speed(target_speed)
 
         try:
             self.stanley.set_waypoints(trajectory)
         except Exception as e:
             print(e)
-            print("Actions - ", np.round(action, 2))
-            print("Next Waypoints : ", np.round(trajectory,2))
+            print("Trajectory : ", trajectory)
+            print("Velocity : ", np.round(targ,2))
             exit()
 
         action, ret_val = self.stanley.get_controls()
@@ -366,7 +371,7 @@ class CarEnv(gym.Env):
         # Add traffic
         self.vehicle_spawn_points = list(self.world.get_map().get_spawn_points())
         self.add_traffic()
-
+        
         # self.ego_agent = BasicAgent(self.ego)
 
         # destination = self.global_path_carla[-1]
@@ -385,6 +390,10 @@ class CarEnv(gym.Env):
 
         # self.traffic_manager.vehicle_percentage_speed_difference(self.ego, -50)
         # self.traffic_manager.set_path(self.ego, self.global_path_carla)
+
+        print("Waiting for environment to be ready...")
+        for i in range(10):
+            self.world.tick()
 
         return self._next_observation()
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -15,12 +16,14 @@ import os
 class DeXBee:
     def __init__(self) -> None:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = "cpu"
+
         self.dtype = torch.float32
         np.set_printoptions(suppress=True)
 
         # Args
         self.seed = 12321
-        self.weights_dir = "../iros_23/weights/"
+        self.weights_dir = "/scratch/parth.shah/deb/weights/"
         self.exp_id = "exp1"
 
         # Set seed
@@ -34,6 +37,8 @@ class DeXBee:
         self.model.to(self.device)
         self.model.eval()
 
+        print("Device : ", self.device)
+
     def to_continuous(self, obs):
         obs_pos = []    
         for j in range(obs.shape[0]):
@@ -43,7 +48,7 @@ class DeXBee:
                     obs_pos.append([new_x*30/256,new_y*30/256])
         return obs_pos
 
-    def generate_path(self, bev, global_path, current_speed):
+    def generate_path(self, obstacle_array, global_path, current_speed):
         # Process global path
         global_path_orig = np.copy(global_path)        
 
@@ -58,21 +63,40 @@ class DeXBee:
         g_path = g_path[:, [1,0]]*30/256
 
         # Process occupancy map
-        occupancy_map = torch.as_tensor(bev, dtype = self.dtype).unsqueeze(0) # obstacle pos in euclidean space
+        obstacle_array = np.copy(obstacle_array)
+
+        bev = np.dstack([obstacle_array, global_path_array])
+        # print("BEV shape : ", bev.shape)
+
+        occupancy_map = torch.as_tensor(bev, dtype = self.dtype) # obstacle pos in euclidean space
+        # print("Occupancy map shape : ", occupancy_map.shape)
         occupancy_map = torch.permute(occupancy_map, (2,0,1)) / 255.0 
         
-        # Process obstacles
-        obstacle_positions = np.array(self.to_continuous(bev))
 
-        #Finding the mean actions from the NN 
+        # Process obstacles
+        obstacle_positions = np.array(self.to_continuous(obstacle_array))
+
+
+        #Finding the mean actions from the NN
+        tic = time.time()
         with torch.no_grad():
-            mean_action = self.model(occupancy_map.unsqueeze(0)).reshape(30,2) # NN output reshaped        
+            mean_action = self.model(occupancy_map.unsqueeze(0).to(self.device)).reshape(30,2) # NN output reshaped        
+        toc = time.time()
+        # print("Time taken for NN : ", toc-tic)
         
+        tic = time.time()
+        mean_action_cpu = mean_action.detach().cpu()
+        toc = time.time()
+        # print("Time taken for GPU-CPU : ", toc-tic)
+
         #Finding the best trajectory
-        sampler = Goal_Sampler(torch.tensor([0, 0, np.deg2rad(90)]), 4.13, 0, obstacles=obstacle_positions)
+        tic = time.time()
+        sampler = Goal_Sampler(torch.tensor([0, 0, np.deg2rad(90)]), 4.13, 0, obstacles=obstacle_positions, num_particles = 100)
         sampler.num_particles = 100
-        sampler.mean_action = mean_action
+        sampler.mean_action = mean_action_cpu
         sampler.infer_traj()
+        toc = time.time()
+        # print("Time taken for sampling : ", toc-tic)
 
         best_controls = sampler.top_controls[0,:,:] # contains the best v and w
         best_traj = sampler.top_trajs[0,:,:] # contains the best x, y and theta
