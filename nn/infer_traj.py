@@ -12,12 +12,13 @@ from dataset_pipeline.utils import rotate
 from dataset_pipeline.utils import draw_circle
 from dataclasses import dataclass 
 import tyro
+import copy
 # from frenet_transformations import global_traj, global_to_frenet, frenet_to_global
 # torch.manual_seed(42)
 
 @dataclass
 class Args:
-    dataset_dir: str = '../iros_23/dataset/' # 'data/dataset_beta/'
+    dataset_dir: str = '../carla_latest/' # 'data/dataset_beta/'
     weights_dir: str = '../iros_23/weights/' 
     loss_dir: str = '../iros_23/loss/' 
     infer_dir: str = "../iros_23/infer_dir/"
@@ -48,65 +49,62 @@ def run():
     weights = torch.load(args.weights_dir+"model_"+args.exp_id+".pt", map_location=torch.device(device))
     model.load_state_dict(weights)
     model.to(device)
-
-    files = os.listdir(args.dataset_dir)
-    print(len(files)-1)
+    occ_map_files = [f for f in os.listdir(args.dataset_dir+"occ_map") if not f.startswith('.')]
+    # print(len(files))
+    # quit()
     
 
     # torch.save(model.state_dict(), model_path)
-    for i in range(1,len(files)-1):
+    for i in range(len(occ_map_files)):
         t_1 = time.time()
         print(i)
         obs_pos = []
-        file_name = dataset_dir + "data_" + str(i).zfill(5) + ".pkl"
-        plt_save_file_name = plot_im_dir + "data_" + str(i)
-        mean_save_filename = mean_dir + "data_" + str(i)
-        infer_file_name =infer_dir + "data_" + str(i)
-        
+        file_name = args.dataset_dir+"occ_map/" + "data_" + str(i).zfill(5) + ".pkl"
+        # plt_save_file_name = plot_im_dir + "data_" + str(i)
+        # mean_save_filename = args.dataset_dir+"mean_controls/" + "data_" + str(i) + ".npy"
+        infer_file_name = args.infer_dir + "data_" + str(i).zfill(5)
+        mean_controls_gt = np.load(args.dataset_dir+"mean_controls/" + "data_" + str(i).zfill(5) + ".npy")
+        mean_controls_gt = torch.as_tensor(mean_controls_gt, dtype=dtype, device = device)
         with open(file_name, "rb") as f:
             data = pickle.load(f)
-        obs = data['obstable_array']
-        occ_map = torch.as_tensor(data['obstable_array'], dtype = dtype).unsqueeze(0) # obstacle pos in euclidean space
-        print(obs.shape)
-        g_path = data['g_path'] -[256/2,256/2] # global path points
+            
+        # Plotting g_path on occ_map in separate channel
+        obs_array = data['obstable_array']
+        g_path_array = np.zeros((256,256))
+        g_path = copy.copy(data['g_path'])
+        g_path[:,0] = -g_path[:,0] + 256 # global path points
+        g_path = g_path.astype(np.int32)
+        g_path = g_path[np.where( (g_path[:, 0]<256) & (g_path[:, 1]<256) & (g_path[:, 0]>=0) & (g_path[:, 1]>=0) )]
+        g_path_array[g_path[:,0],g_path[:,1]] = 255
+        bev = np.dstack([obs_array, g_path_array])
+
+
+        occ_map = torch.as_tensor(bev, dtype = dtype)
+        occ_map = torch.permute(occ_map, (2,0,1)) / 255.0 
+        
+        g_path = data['g_path'] - [256/2,256/2] # global path points
         g_path = g_path[:, [1,0]]*30/256
         
-        obs_pos = np.array(to_continuous(obs))
+        obs_pos = np.array(to_continuous(obs_array))
 
-        # new_g_path, interpolated_g_path, theta = global_traj(g_path, 0.1)
-
-        # ego_theta = np.rad2deg(np.pi/2 + (np.pi/2 - theta[0]))
-        # print(ego_theta)
-        
-        # obs_pos_frenet = global_to_frenet(obs_pos, new_g_path, g_path)
-
-        sampler = Goal_Sampler(torch.tensor([0,0,np.deg2rad(90)]), 4.13, 0, obstacles=obs_pos)
-        sampler.num_particles = 100
+        sampler1 = Goal_Sampler(torch.tensor([0,0,np.deg2rad(90)]), 4.13, 0, obstacles=obs_pos, num_particles = 100)
+        sampler2 = Goal_Sampler(torch.tensor([0,0,np.deg2rad(90)]), 4.13, 0, obstacles=obs_pos, num_particles = 100)
+        sampler2.mean_action = mean_controls_gt
+        # sampler1.num_particles = 1
+        # sampler2.num_particles = 1
         t1 = time.time()
         model.eval()
         with torch.no_grad():
-            sampler.mean_action = model(occ_map.unsqueeze(0)).reshape(30,2) # NN output reshaped
+            sampler1.mean_action = model(occ_map.unsqueeze(0)).reshape(30,2) # NN output reshaped
         t1 = time.time()
-        sampler.infer_traj()
-        print("Inference time: ", time.time()-t1)
-        quit()
-
-        # mean_controls = sampler.mean_action
-        # mean_traj = sampler.traj_N[-2,:,:]
-        # cov_controls = sampler.scale_tril
-        # print(mean_controls)
-        
-        # mean_controls[:,1] = frenet_to_global(mean_traj, new_g_path, interpolated_g_path, 0.1)
-        # print(mean_controls)
+        # print(sampler1.mean_action)
         # quit()
-        # sampler.obstacles = obs_pos
-        # sampler.mean_action = torch.as_tensor(mean_controls)
-        # sampler.c_state = torch.tensor([0,0,np.deg2rad(90)])
-        # sampler.infer_traj()
-        # np.save(mean_save_filename,sampler.best_traj)
-        
-        ## plot
-        # for k in range(g_path.shape[0]):
+        sampler1.infer_traj()
+        print("Inference time: ", time.time()-t1)
+        sampler2.infer_traj()
+        print("Total time: ", time.time()-t_1)
+        # quit()
+
         plt.scatter(g_path[:,0],g_path[:,1],color='blue', alpha=0.1)
 
         x_car, y_car = draw_circle(0, 0, 1.80)
@@ -118,14 +116,16 @@ def run():
         plt.plot(obs_pos[:,0], obs_pos[:,1], 'k.')
             
         # for j in range(sampler.traj_N.shape[0]):
-        plt.plot(sampler.traj_N[:,:,0], sampler.traj_N[:,:,1], '.r', markersize=1, alpha=0.05)
-        plt.plot(sampler.traj_N[-2,:,0], sampler.traj_N[-2,:,1], '.g', markersize=1)
-        plt.plot(sampler.top_trajs[0,:,0], sampler.top_trajs[0,:,1], 'blue', markersize=1)
-        print("Total time: ", time.time()-t_1)
+        plt.plot(sampler1.traj_N[:,:,0], sampler1.traj_N[:,:,1], '.b', markersize=1, alpha=0.04)
+        plt.plot(sampler2.traj_N[-2,:,0], sampler2.traj_N[-2,:,1], 'orange', markersize=3,  label = "Ground Truth")
+        plt.plot(sampler1.traj_N[-2,:,0], sampler1.traj_N[-2,:,1], 'red', markersize=3, label = "Predicted")
+        plt.plot(sampler1.top_trajs[0,:,0], sampler1.top_trajs[0,:,1], 'lime', markersize=2, label = "best traj")
+        
         plt.ylim(-15,15)
         plt.xlim(-15,15)
+        plt.legend(loc="lower center")
         # print(sampler.top_trajs[0,:,:2])
-        plt.savefig(infer_file_name)
+        plt.savefig(infer_file_name, dpi=500)
         # plt.show()
         plt.clf()
         # quit()
