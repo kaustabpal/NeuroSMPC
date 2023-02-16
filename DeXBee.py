@@ -43,7 +43,7 @@ class DeXBee:
                     obs_pos.append([new_x*30/256,new_y*30/256])
         return obs_pos
 
-    def generate_plan(self, bev, global_path):
+    def generate_path(self, bev, global_path, current_speed):
         # Process global path
         global_path_orig = np.copy(global_path)        
 
