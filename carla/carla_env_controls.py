@@ -10,8 +10,8 @@ import random
 
 import cv2
 
-from agents.navigation.basic_agent import BasicAgent
-from agents.navigation.behavior_agent import BehaviorAgent
+# from agents.navigation.basic_agent import BasicAgent
+# from agents.navigation.behavior_agent import BehaviorAgent
 
 from utils.custom_pid import PID
 
