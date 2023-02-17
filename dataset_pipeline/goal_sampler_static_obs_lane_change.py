@@ -92,6 +92,8 @@ class Goal_Sampler:
     #     self.SIG = 0.7*torch.ones((2,self.horizon))
     def initialize(self):
         self.init_q = [self.vl, self.wl]
+        self.max_acc = torch.tensor([self.amax, self.jmax])
+        self.min_acc = torch.tensor([self.amin, self.jmin])
         self.max_ctrl = torch.tensor([self.v_ub, self.w_ub])
         self.min_ctrl = torch.tensor([self.v_lb, self.w_lb])
         self.n_knots = self.horizon//self.knot_scale
@@ -158,7 +160,7 @@ class Goal_Sampler:
         return samples
     
     def scale_controls(self, act_seq):
-        return torch.max(torch.min(act_seq, self.max_ctrl),self.min_ctrl)
+        return torch.max(torch.min(act_seq, self.max_acc),self.min_acc)
 
     def sample_controls(self, inference = False):
         uniform_halton_samples = torch.tensor(self.sequencer.get(self.sample_shape)) # samples N control points

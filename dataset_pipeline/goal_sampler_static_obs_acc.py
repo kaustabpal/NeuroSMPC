@@ -29,12 +29,14 @@ class Goal_Sampler:
         self.v_lb = 0
         self.w_ub = 0.4
         self.w_lb = -0.4
-        self.max_ctrl = torch.tensor([self.v_ub, self.w_ub])
-        self.min_ctrl = torch.tensor([self.v_lb, self.w_lb])
         self.amin = -3.19
         self.amax = 3.19
         self.jmin = -0.1
         self.jmax = 0.1
+        self.max_acc = torch.tensor([self.amax, self.jmax])
+        self.min_acc = torch.tensor([self.amin, self.jmin])
+        self.max_ctrl = torch.tensor([self.v_ub, self.w_ub])
+        self.min_ctrl = torch.tensor([self.v_lb, self.w_lb])
         self.init_q = [self.vl, self.wl]
 
         # obstacle info
@@ -128,7 +130,7 @@ class Goal_Sampler:
         return samples
     
     def scale_controls(self, act_seq):
-        return torch.max(torch.min(act_seq, self.max_ctrl),self.min_ctrl)
+        return torch.max(torch.min(act_seq, self.max_acc),self.min_acc)
 
     def sample_controls(self, inference = False):
         uniform_halton_samples = torch.tensor(self.sequencer.get(self.sample_shape)) # samples N control points
