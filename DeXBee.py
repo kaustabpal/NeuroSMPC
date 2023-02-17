@@ -24,7 +24,7 @@ class DeXBee:
         # Args
         self.seed = 12321
         self.weights_dir = "/scratch/parth.shah/deb/weights/"
-        self.exp_id = "exp1"
+        self.exp_id = "exp1-1"
 
         # Set seed
         torch.manual_seed(self.seed)
@@ -41,6 +41,9 @@ class DeXBee:
 
         self.visualize = True
         self.save = False
+
+        if self.visualize:
+            plt.ion()
 
     def to_continuous(self, obs):
         obs_pos = []    
@@ -107,9 +110,10 @@ class DeXBee:
         best_traj = best_traj.detach().cpu().numpy()
         best_controls = best_controls.detach().cpu().numpy()
         
+        print("Plotting")
         if self.visualize or self.save:
             self.plotter(obstacle_positions, g_path, sampler, 0.5, current_speed)
-
+        print("Done plotting")
         return best_traj, best_controls
     
     def plotter(self, obstacle_positions, global_path, sampler, ego_radius, current_speed, filename = None):
@@ -125,7 +129,7 @@ class DeXBee:
         plt.scatter(global_path[:,0],global_path[:,1],color='blue', alpha=0.1)
 
         # Obstacles
-        plt.scatter(obstacle_positions[:,0],obstacle_positions[:,1],'k.')
+        plt.plot(obstacle_positions[:,0],obstacle_positions[:,1],'k.')
 
         # All trajectories
         plt.plot(sampler.traj_N[:,:,0], sampler.traj_N[:,:,1], '.b', markersize=1, alpha=0.04)
@@ -145,5 +149,5 @@ class DeXBee:
             plt.savefig(filename)
         
         if self.visualize:
-            plt.show()
+            plt.draw()
             plt.pause(0.001)

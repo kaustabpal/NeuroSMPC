@@ -32,8 +32,8 @@ def run():
         best_path, best_controls = planner.generate_path(obstacle_array, global_path, current_speed)
         toc = time.time()
 
-        # print("----------------------------------")
-        # # print("Time taken: ", toc-tic)
+        print("----------------------------------")
+        print("Time taken: ", toc-tic)
 
         best_path = np.array(best_path)
         best_controls = np.array(best_controls)
@@ -52,7 +52,7 @@ def run():
         # print("Best controls length: ", len(best_controls))
         # print("Best controls shape: ", best_controls.shape)
 
-        print("Target speed: ", target_speed, best_controls[1,0])
+        # print("Target speed: ", target_speed, best_controls[1,0])
 
         obs, reward, done, info = env.step(best_path, target_speed=target_speed)
         env.render()
@@ -76,10 +76,10 @@ def run():
         g_path = env.next_g_path
         speed = env.speed_ego
 
-        cv2.imshow("BEV", bev)
-        q = cv2.waitKey(100)
-        if q == ord('q'):
-            break
+        # cv2.imshow("BEV", bev)
+        # q = cv2.waitKey(100)
+        # if q == ord('q'):
+        #     break
 
 
 
