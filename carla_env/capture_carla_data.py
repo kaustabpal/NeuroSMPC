@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-from carla_env_controls import CarEnv
+# from carla_env.carla_env_controls import CarEnv
+from carla_env.carla_env_controls_obs import CarEnv
 
 
 import numpy as np
@@ -56,7 +57,7 @@ def teleop_callbak(data):
 
 def run():
 
-    temp_dir = "/scratch/parth.shah/temp/"
+    temp_dir = "/home/aditya/deb_data/"
     os.makedirs(temp_dir + "bev", exist_ok=True)
     os.makedirs(temp_dir + "storm", exist_ok=True)
 
@@ -82,21 +83,30 @@ def run():
         ### Testing BEV
         # tic = time.time()
         bev = env.bev
+        if bev is None:
+            continue
         obstable_array = env.obstacle_bev
         g_path = env.next_g_path
         speed = env.speed_ego
+        left_lane = env.left_lane_coords
+        right_lane = env.right_lane_coords
+        dyn_obs = env.dyn_obs_poses
+        num_obs = len(env.dyn_obs_poses)
 
         data = {
             "obstable_array": obstable_array,
             "g_path": g_path,
-            "speed": speed
+            "speed": speed,
+            "left_lane": left_lane,
+            "right_lane": right_lane,
+            "dyn_obs": dyn_obs,
+            "num_obs": num_obs
         }
 
         with open(temp_dir + "storm/data_" + str(i) + ".pkl", "wb") as f:
             pickle.dump(data, f)
 
         file_name = temp_dir + "bev/bev_{}.jpg".format(i)
-
         cv2.imwrite(file_name, bev)
 
         cv2.imshow("BEV", bev)

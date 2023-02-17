@@ -2,7 +2,7 @@ import gym
 from gym import spaces
 import carla
 import numpy as np
-from utils.transforms import se3_to_components
+from carla_env.utils.transforms import se3_to_components
 import time
 import atexit
 
@@ -13,7 +13,7 @@ import cv2
 # from agents.navigation.basic_agent import BasicAgent
 # from agents.navigation.behavior_agent import BehaviorAgent
 
-from utils.custom_pid import PID
+from carla_env.utils.custom_pid import PID
 
 DEBUG = False
 
