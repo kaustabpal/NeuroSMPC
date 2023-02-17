@@ -29,10 +29,10 @@ class Goal_Sampler:
         self.v_lb = 0
         self.w_ub = 0.4
         self.w_lb = -0.4
-        self.amin = -3.19
-        self.amax = 3.19
-        self.jmin = -0.1
-        self.jmax = 0.1
+        self.amin = -5.19
+        self.amax = 5.19
+        self.jmin = -2
+        self.jmax = 2
         self.max_acc = torch.tensor([self.amax, self.jmax])
         self.min_acc = torch.tensor([self.amin, self.jmin])
         self.max_ctrl = torch.tensor([self.v_ub, self.w_ub])
@@ -40,7 +40,7 @@ class Goal_Sampler:
         self.init_q = [self.vl, self.wl]
 
         # obstacle info
-        self.obst_radius = 0.05859375
+        self.obst_radius = 0.084
         self.obstacles = obstacles
         self.n_obst = 0
         
@@ -79,8 +79,8 @@ class Goal_Sampler:
         self.init_mean = self.init_action 
         self.mean_action = self.init_mean.clone()
         self.best_traj = self.mean_action.clone()
-        self.init_v_cov = 0.9
-        self.init_w_cov = 0.9
+        self.init_v_cov = 2
+        self.init_w_cov = 2
         self.init_cov_action = torch.tensor([self.init_v_cov, self.init_w_cov])
         self.cov_action = self.init_cov_action
         self.scale_tril = torch.sqrt(self.cov_action)
@@ -255,6 +255,7 @@ class Goal_Sampler:
             threshold_dist = self.radius + self.obst_radius
             d_to_o = torch.cdist(self.traj_N[i,:,:2], torch.tensor(self.obstacles,dtype=torch.float32), p=2)
             self.collision_cost_N[i] += torch.sum((d_to_o<threshold_dist).type(torch.float32))
+            
             # quit()
             # for o in self.obstacles:
             #     dist = torch.linalg.norm(self.traj_N[i,:,:2]-torch.from_numpy(o)[:2]*torch.ones(self.horizon+1,2),axis = 1)

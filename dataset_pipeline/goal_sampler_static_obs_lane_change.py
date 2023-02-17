@@ -160,7 +160,7 @@ class Goal_Sampler:
         return samples
     
     def scale_controls(self, act_seq):
-        return torch.max(torch.min(act_seq, self.max_acc),self.min_acc)
+        return torch.max(torch.min(act_seq, self.max_ctrl),self.min_ctrl)
 
     def sample_controls(self, inference = False):
         uniform_halton_samples = torch.tensor(self.sequencer.get(self.sample_shape)) # samples N control points
@@ -238,23 +238,23 @@ class Goal_Sampler:
         for i in range(self.controls_N.shape[0]):
             t1 = time.time()
             # self.traj_N[i,0,:] = self.c_state.view(3)
-            a = self.controls_N[i,:,0]#.view(-1,1)
-            j = self.controls_N[i,:,1]#.view(-1,1)
-            d_v = a*self.dt
-            d_w = j*self.dt
-            d_v_csum = torch.cumsum(d_v, dim=0)
-            d_w_csum = torch.cumsum(d_w, dim=0)
+            # a = self.controls_N[i,:,0]#.view(-1,1)
+            # j = self.controls_N[i,:,1]#.view(-1,1)
+            # d_v = a*self.dt
+            # d_w = j*self.dt
+            # d_v_csum = torch.cumsum(d_v, dim=0)
+            # d_w_csum = torch.cumsum(d_w, dim=0)
             
-            v = self.vl+d_v_csum
-            w = self.wl+d_w_csum
-            v = v.view(-1,1)
-            w = w.view(-1,1)
+            # v = self.vl+d_v_csum
+            # w = self.wl+d_w_csum
+            # v = v.view(-1,1)
+            # w = w.view(-1,1)
             
-            v = torch.max(torch.min(v,self.max_ctrl[0]),self.min_ctrl[0])
-            w = torch.max(torch.min(w, self.max_ctrl[1]),self.min_ctrl[1])
+            # v = torch.max(torch.min(v,self.max_ctrl[0]),self.min_ctrl[0])
+            # w = torch.max(torch.min(w, self.max_ctrl[1]),self.min_ctrl[1])
             
-            # v = self.controls_N[i,:,0].view(-1,1)
-            # w = self.controls_N[i,:,1].view(-1,1)
+            v = self.controls_N[i,:,0].view(-1,1)
+            w = self.controls_N[i,:,1].view(-1,1)
             w_dt = diag_dt@w.float()
             theta_0 = self.traj_N[i,0,2]*torch.ones(self.horizon,1)
             x_0 = self.traj_N[i,0,0]*torch.ones(self.horizon,1)

@@ -48,7 +48,7 @@ def run():
     mean_dir = args.mean_dir
     files = os.listdir(dataset_dir)
     print(len(files)-1)
-    for i in range(0,len(files)):
+    for i in range(149,len(files)):
         t_1 = time.time()
         print(i)
         obs_pos = []
@@ -79,13 +79,13 @@ def run():
         mean_controls = sampler.mean_action
         mean_traj = sampler.traj_N[-2,:,:]
         cov_controls = sampler.scale_tril
-        # print(mean_controls)
+        print(mean_controls)
         
-        mean_controls[:,1] = frenet_to_global(mean_traj, new_g_path, interpolated_g_path, 0.1)
+        # mean_controls[:,1] = frenet_to_global(mean_traj, new_g_path, interpolated_g_path, 0.1)
         # print(mean_controls)
         # quit()
         sampler.obstacles = obs_pos
-        sampler.mean_action = torch.as_tensor(mean_controls)
+        # sampler.mean_action = torch.as_tensor(mean_controls)
         sampler.c_state = torch.tensor([0,0,np.deg2rad(90)])
         sampler.infer_traj()
         # np.save(mean_save_filename,sampler.mean_action)
@@ -100,7 +100,7 @@ def run():
         # for j in range(obs_pos.shape[0]):
         # print(obs_pos[:][:,0])
         
-        plt.plot(obs_pos[:,0], obs_pos[:,1], 'k.')
+        # plt.plot(obs_pos[:,0], obs_pos[:,1], 'k.')
         plt.scatter(obs_pos_frenet[:,0], obs_pos_frenet[:,1], color='orange')
             
         # for j in range(sampler.traj_N.shape[0]):
