@@ -267,7 +267,9 @@ class Goal_Sampler:
             # Obstacle avoidance
             t1 = time.time()
             threshold_dist = self.radius + self.obst_radius
-            d_to_o = torch.cdist(self.traj_N[i,:,:2], torch.tensor(self.obstacles,dtype=torch.float32), p=2)
+            # d_to_o = torch.cdist(self.traj_N[i,:,:2].reshape(1, self.horizon+1, 2), torch.tensor(self.obstacles,dtype=torch.float32), p=2)
+            d_to_o = torch.linalg.norm(self.traj_N[i,:,:2].reshape(1, self.horizon+1, 2) - torch.tensor(self.obstacles,dtype=torch.float32), dim=2)
+                                       
             self.collision_cost_N[i] += torch.sum((d_to_o<threshold_dist).type(torch.float32))
             # quit()
             # for o in self.obstacles:
