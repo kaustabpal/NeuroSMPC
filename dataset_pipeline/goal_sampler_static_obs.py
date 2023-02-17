@@ -38,7 +38,7 @@ class Goal_Sampler:
         self.init_q = [self.vl, self.wl]
 
         # obstacle info
-        self.obst_radius = 0.05859375
+        self.obst_radius = 0.083
         self.obstacles = obstacles
         self.n_obst = 0
         
