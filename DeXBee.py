@@ -9,7 +9,7 @@ import torch
 from nn.model import Model1
 from dataset_pipeline.goal_sampler_static_obs import Goal_Sampler
 
-from dataset_pipeline.utils import rotate
+from dataset_pipeline.utils import rotate, draw_circle
 
 import os
 
@@ -38,6 +38,9 @@ class DeXBee:
         self.model.eval()
 
         print("Device : ", self.device)
+
+        self.visualize = True
+        self.save = False
 
     def to_continuous(self, obs):
         obs_pos = []    
@@ -104,4 +107,43 @@ class DeXBee:
         best_traj = best_traj.detach().cpu().numpy()
         best_controls = best_controls.detach().cpu().numpy()
         
+        if self.visualize or self.save:
+            self.plotter(obstacle_positions, g_path, sampler, 0.5, current_speed)
+
         return best_traj, best_controls
+    
+    def plotter(self, obstacle_positions, global_path, sampler, ego_radius, current_speed, filename = None):
+        # Clear plot
+        plt.clf()
+        
+        # Car
+        x_car, y_car = draw_circle(0, 0, ego_radius)
+        plt.plot(x_car,y_car,'g')
+        plt.text(0, 0, "v = {}".format(np.round(current_speed, 2)), color='g')
+
+        # Global path
+        plt.scatter(global_path[:,0],global_path[:,1],color='blue', alpha=0.1)
+
+        # Obstacles
+        plt.scatter(obstacle_positions[:,0],obstacle_positions[:,1],'k.')
+
+        # All trajectories
+        plt.plot(sampler.traj_N[:,:,0], sampler.traj_N[:,:,1], '.b', markersize=1, alpha=0.04)
+
+        # Predicted trajectory
+        plt.plot(sampler.traj_N[-2,:,0], sampler.traj_N[-2,:,1], 'red', markersize=3, label = "Predicted")
+
+        # Best trajectory
+        plt.plot(sampler.top_trajs[0,:,0], sampler.top_trajs[0,:,1], 'lime', markersize=2, label = "best traj")
+        
+        # Set Limits
+        plt.ylim(-15,15)
+        plt.xlim(-15,15)
+        plt.legend(loc="lower center")
+
+        if self.save and filename is not None:
+            plt.savefig(filename)
+        
+        if self.visualize:
+            plt.show()
+            plt.pause(0.001)

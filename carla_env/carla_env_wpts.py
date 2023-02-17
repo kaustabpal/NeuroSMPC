@@ -254,7 +254,7 @@ class CarEnv(gym.Env):
         except Exception as e:
             print(e)
             print("Trajectory : ", trajectory)
-            print("Velocity : ", np.round(targ,2))
+            print("Velocity : ", np.round(target_speed,2))
             exit()
 
         action, ret_val = self.stanley.get_controls()
