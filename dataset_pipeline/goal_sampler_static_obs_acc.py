@@ -14,12 +14,10 @@ import scipy.interpolate as si
 np.set_printoptions(suppress=True)
 
 class Goal_Sampler:
-    def __init__(self, c_state, vl, wl, obstacles):
+    def __init__(self, c_state, vl, wl, obstacles, num_particles = 500):
         # agent info
         self.balls = []
         self.radius = 1.80
-        self.left_lane_bound = -4.5
-        self.right_lane_bound = 4.5
         self.c_state = c_state # start state
         # self.g_state = g_state # goal state
         self.step_size_mean = 0.7
@@ -31,11 +29,13 @@ class Goal_Sampler:
         self.v_lb = 0
         self.w_ub = 0.4
         self.w_lb = -0.4
-
+        self.max_ctrl = torch.tensor([self.v_ub, self.w_ub])
+        self.min_ctrl = torch.tensor([self.v_lb, self.w_lb])
         self.amin = -3.19
         self.amax = 3.19
         self.jmin = -0.1
         self.jmax = 0.1
+        self.init_q = [self.vl, self.wl]
 
         # obstacle info
         self.obst_radius = 0.05859375
@@ -51,52 +51,7 @@ class Goal_Sampler:
         self.n_knots = self.horizon//self.knot_scale
         self.ndims = self.n_knots*self.d_action
         self.bspline_degree = 3
-        self.num_particles = 500
-        
-        self.null_act_frac = 0.01
-        self.num_null_particles = round(int(self.null_act_frac * self.num_particles * 1.0))
-        self.num_neg_particles = round(int(self.null_act_frac * self.num_particles)) -\
-                                                            self.num_null_particles
-        self.num_nonzero_particles = self.num_particles - self.num_null_particles -\
-                                                            self.num_neg_particles
-        self.sample_shape =  self.num_particles - 2
-
-        if(self.num_null_particles > 0):
-            self.null_act_seqs = torch.zeros(self.num_null_particles, self.horizon,\
-                                                                    self.d_action)
-        # self.initialize_mu()
-        # self.initialize_sig()
-
-        # Sampling params
-        self.perms = ghalton.EA_PERMS[:self.ndims]
-        self.sequencer = ghalton.GeneralizedHalton(self.perms)
-
-        # init_q = torch.tensor(self.c_state)
-        self.init_v_cov = 0.9
-        self.init_w_cov = 0.9
-        
-        self.gamma = 0.99
-        
-        self.max_free_ball_radius = 3.5
-
-        self.device = "cpu" #torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        # print(self.device)
-        # self.curr_state_N = np.zeros((self.N,1,3))
-        # self.V_N_T = np.zeros((self.N, self.horizon))
-        # self.W_N_T = np.zeros((self.N, self.horizon))
-
-    # def initialize_mu(self): # tensor contain initialized values'''
-    #      self.MU = 0*torch.ones((2,self.horizon)) # 2 dim Mu for vel and Angular velocity
-    
-    # def initialize_sig(self):
-    #     self.SIG = 0.7*torch.ones((2,self.horizon))
-    def initialize(self):
-        self.init_q = [self.vl, self.wl]
-        self.max_ctrl = torch.tensor([self.v_ub, self.w_ub])
-        self.min_ctrl = torch.tensor([self.v_lb, self.w_lb])
-        self.n_knots = self.horizon//self.knot_scale
-        self.ndims = self.n_knots*self.d_action
-
+        self.num_particles = int(max(20,num_particles)) #00
         self.top_K = int(0.05*self.num_particles) # Number of top samples
         
         self.null_act_frac = 0.01
@@ -122,23 +77,38 @@ class Goal_Sampler:
         self.init_mean = self.init_action 
         self.mean_action = self.init_mean.clone()
         self.best_traj = self.mean_action.clone()
-
+        self.init_v_cov = 0.9
+        self.init_w_cov = 0.9
         self.init_cov_action = torch.tensor([self.init_v_cov, self.init_w_cov])
         self.cov_action = self.init_cov_action
         self.scale_tril = torch.sqrt(self.cov_action)
         self.full_scale_tril = torch.diag(self.scale_tril)
-
+        
+        self.gamma = 0.99
         self.gamma_seq = torch.cumprod(torch.tensor([1]+[self.gamma]*(self.horizon-1)),dim=0).reshape(1,self.horizon)
 
         self.traj_N = torch.zeros((self.num_particles, self.horizon+1, 3))
         self.controls_N = torch.zeros((self.num_particles, self.horizon, 2))
 
         self.top_trajs = torch.zeros((self.top_K, self.horizon+1, 3))
+        self.top_controls = torch.zeros((self.top_K, self.horizon, 2))
         self.top_traj = self.c_state.reshape(1,3)*torch.ones((self.horizon+1, 3))
-        self.top_controls = torch.zeros((2, 2))
-
+        
+        self.max_free_ball_radius = 3.5
         self.centers = torch.ones(self.horizon+1,2)
         self.free_ball_radius = self.max_free_ball_radius*torch.ones(self.horizon+1,1)
+
+        self.device = "cpu" #torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # print(self.device)
+        # self.curr_state_N = np.zeros((self.N,1,3))
+        # self.V_N_T = np.zeros((self.N, self.horizon))
+        # self.W_N_T = np.zeros((self.N, self.horizon))
+
+    # def initialize_mu(self): # tensor contain initialized values'''
+    #      self.MU = 0*torch.ones((2,self.horizon)) # 2 dim Mu for vel and Angular velocity
+    
+    # def initialize_sig(self):
+    #     self.SIG = 0.7*torch.ones((2,self.horizon))
     
     def bspline(self, c_arr, t_arr=None, n=30, degree=3):
         sample_device = c_arr.device
@@ -214,7 +184,9 @@ class Goal_Sampler:
         state = state + a@controls.float()*self.dt
         return state
     
-    def rollout(self, s_o = 10, s_s = 1, s_c=0):
+    def rollout(self, s_o = 10, s_s = 10, s_c=1, s_m = 1):
+        # print(self.num_particles)
+        # print(self.controls_N.shape[0])
         t_r = time.time()
         self.goal_region_cost_N = torch.zeros((self.traj_N.shape[0]))
         self.left_lane_bound_cost_N = torch.zeros((self.traj_N.shape[0]))
@@ -224,6 +196,7 @@ class Goal_Sampler:
         self.in_balls_cost_N = torch.zeros((self.traj_N.shape[0]))
         self.collision_cost_N = torch.zeros((self.traj_N.shape[0]))
         self.ang_vel_cost_N = torch.zeros((self.controls_N.shape[0]))
+        self.dist_to_mean_cost_N = 99*torch.ones((self.controls_N.shape[0]))
         self.center_line_cost_N = torch.zeros((self.controls_N.shape[0]))
         diag_dt = self.dt*torch.ones(self.horizon, self.horizon)
         diag_dt = torch.tril(diag_dt)
@@ -233,7 +206,7 @@ class Goal_Sampler:
         t_4 = []
         self.traj_N[:,0,:] = self.c_state.view(3)
 
-        for i in range(self.controls_N.shape[0]):
+        for i in range(self.num_particles):
             t1 = time.time()
             # self.traj_N[i,0,:] = self.c_state.view(3)
             a = self.controls_N[i,:,0]#.view(-1,1)
@@ -269,22 +242,16 @@ class Goal_Sampler:
                         
             # angular velocity constraints
             self.ang_vel_cost_N[i] = torch.sum(torch.diff(self.controls_N[i,:,1])**2) #torch.norm(self.controls_N[i,:,1])
-
-            # Lane boundary cost
-            left_lane_cost = 1000*torch.ones(self.traj_N[i,self.traj_N[i,:,self.axis]<self.left_lane_bound,self.axis].shape)
-            right_lane_cost = 1000*torch.ones(self.traj_N[i,self.traj_N[i,:,self.axis]>self.right_lane_bound,1].shape)
-            self.left_lane_bound_cost_N[i] = torch.sum(left_lane_cost) 
-            self.right_lane_bound_cost_N[i] = torch.sum(right_lane_cost) 
+            
+            self.dist_to_mean_cost_N[i] = torch.linalg.norm(self.controls_N[i,:,1] - self.controls_N[-2,:,1]) #torch.norm(self.controls_N[i,:,1])
             
             # center-line cost
-            self.center_line_cost_N[i] += torch.linalg.norm(self.traj_N[i,:,1]-0)
+            self.center_line_cost_N[i] += torch.linalg.norm(self.traj_N[i,:,0]-0)
             
             # Obstacle avoidance
             t1 = time.time()
             threshold_dist = self.radius + self.obst_radius
-            # d_to_o = torch.cdist(self.traj_N[i,:,:2].reshape(1, self.horizon+1, 2), torch.tensor(self.obstacles,dtype=torch.float32), p=2)
-            d_to_o = torch.linalg.norm(self.traj_N[i,:,:2].reshape(1, self.horizon+1, 2) - torch.tensor(self.obstacles,dtype=torch.float32), dim=2)
-                                       
+            d_to_o = torch.cdist(self.traj_N[i,:,:2], torch.tensor(self.obstacles,dtype=torch.float32), p=2)
             self.collision_cost_N[i] += torch.sum((d_to_o<threshold_dist).type(torch.float32))
             # quit()
             # for o in self.obstacles:
@@ -310,15 +277,16 @@ class Goal_Sampler:
             # else:
             #     self.goal_region_cost_N[i] = copy.deepcopy(dist)
                 
-        self.total_cost_N = s_s*self.ang_vel_cost_N + s_o*self.collision_cost_N + s_c*self.center_line_cost_N + 1*self.left_lane_bound_cost_N + 1*self.right_lane_bound_cost_N
+        self.total_cost_N = s_s*self.ang_vel_cost_N + s_o*self.collision_cost_N + s_c*self.center_line_cost_N + \
+            s_m*self.dist_to_mean_cost_N
         top_values, top_idx = torch.topk(self.total_cost_N, self.top_K, largest=False, sorted=True)
         self.top_trajs = torch.index_select(self.traj_N, 0, top_idx)
-        top_controls = torch.index_select(self.controls_N, 0, top_idx)
-        self.best_traj = copy.deepcopy(top_controls[0,:,:])
+        self.top_controls = torch.index_select(self.controls_N, 0, top_idx)
+        self.best_traj = copy.deepcopy(self.top_controls[0,:,:])
         top_cost = torch.index_select(self.total_cost_N, 0, top_idx)
         w = self._exp_util(top_cost)
         
-        return w, top_controls
+        return w, self.top_controls
         
     def _exp_util(self, costs):
         """
@@ -338,14 +306,14 @@ class Goal_Sampler:
 
     def update_distribution(self, top_w, top_controls):
         
-        weighted_seq = top_w.to(self.device) * top_controls.to(self.device).T        
+        weighted_seq = top_w.to(self.device) * self.top_controls.to(self.device).T        
         sum_seq = torch.sum(weighted_seq.T, dim=0)
 
         new_mean = sum_seq
         self.mean_action = (1.0 - self.step_size_mean) * self.mean_action +\
             self.step_size_mean * new_mean
         
-        delta = top_controls - self.mean_action.unsqueeze(0)
+        delta = self.top_controls - self.mean_action.unsqueeze(0)
 
         weighted_delta = top_w * (delta ** 2).T
         # cov_update = torch.diag(torch.mean(torch.sum(weighted_delta.T, dim=0), dim=0))
@@ -358,7 +326,7 @@ class Goal_Sampler:
         # self.centers[:,:] = copy.deepcopy(self.top_trajs[0,:,:2])
         # self.get_free_balls()
         # print("Free Balls: ", time.time() - t1)
-        # top_w, top_controls = self.get_cost()
+        # top_w, self.top_controls = self.get_cost()
         self.cov_action = self.init_cov_action
         # self.scale_tril = torch.sqrt(self.cov_action)
         # self.full_scale_tril = torch.diag(self.scale_tril)
@@ -371,17 +339,17 @@ class Goal_Sampler:
             # print("Sample Controls: ", time.time() - t1)
             
             t1 = time.time()
-            top_w, top_controls = self.rollout()
+            top_w, self.top_controls = self.rollout()
             # print("Rollout: ", time.time() - t1)
             t1 = time.time()
-            self.update_distribution(top_w, top_controls)
+            self.update_distribution(top_w, self.top_controls)
             # print("Update_Distribution: ", time.time() - t1)
             # print("#######################")
         self.scale_tril = torch.sqrt(self.cov_action)
 
         self.full_scale_tril = torch.diag(self.scale_tril)
         self.sample_controls()
-        top_w, top_controls = self.rollout()
+        top_w, self.top_controls = self.rollout()
         # print(self.mean_action)
         # self.centers[:,:] = copy.deepcopy(self.top_trajs[0,:,:2])
         # self.get_free_balls()
@@ -390,13 +358,12 @@ class Goal_Sampler:
     
     def infer_traj(self):
         t1 = time.time()
-        self.init_cov_action = torch.tensor([0.01, 0.01])
+        self.init_cov_action = torch.tensor([0.09, 0.09])
         self.cov_action = self.init_cov_action
         self.scale_tril = torch.sqrt(self.cov_action)
         self.full_scale_tril = torch.diag(self.scale_tril)
         self.sample_controls()
-        top_w, top_controls = self.rollout(s_o = 1, s_s = 1, s_c = 0)   
-        return top_controls
+        top_w, self.top_controls = self.rollout(s_o = 1, s_s = 0, s_c = 0, s_m = 1)   
     
     def get_vel(self, u):
         v1 = self.vl

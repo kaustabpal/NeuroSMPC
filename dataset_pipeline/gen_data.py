@@ -1,5 +1,6 @@
 import torch
-from goal_sampler_static_obs import Goal_Sampler
+# from goal_sampler_static_obs import Goal_Sampler
+from goal_sampler_static_obs_acc import Goal_Sampler
 from matplotlib import pyplot as plt
 from matplotlib import pyplot as plt
 import numpy as np
@@ -51,9 +52,9 @@ def run():
         t_1 = time.time()
         print(i)
         obs_pos = []
-        file_name = dataset_dir + "data_" + str(i).zfill(2) + ".pkl"
-        plt_save_file_name = plot_im_dir + "data_" + str(i)
-        mean_save_filename = mean_dir + "data_" + str(i)
+        file_name = dataset_dir + "data_" + str(i).zfill(5) + ".pkl"
+        plt_save_file_name = plot_im_dir + "data_" + str(i).zfill(5)
+        mean_save_filename = mean_dir + "data_" + str(i).zfill(5)
         with open(file_name, "rb") as f:
             data = pickle.load(f)
         obs = data['obstable_array'] # obstacle pos in euclidean space
@@ -87,7 +88,7 @@ def run():
         sampler.mean_action = torch.as_tensor(mean_controls)
         sampler.c_state = torch.tensor([0,0,np.deg2rad(90)])
         sampler.infer_traj()
-        np.save(mean_save_filename,sampler.mean_action)
+        # np.save(mean_save_filename,sampler.mean_action)
         
         ## plot
         # for k in range(g_path.shape[0]):
@@ -103,15 +104,15 @@ def run():
         plt.scatter(obs_pos_frenet[:,0], obs_pos_frenet[:,1], color='orange')
             
         # for j in range(sampler.traj_N.shape[0]):
-        plt.plot(sampler.traj_N[:,:,0], sampler.traj_N[:,:,1], 'r', alpha=0.1)
+        plt.plot(sampler.traj_N[:,:,0], sampler.traj_N[:,:,1], '.r', alpha=0.05)
         plt.plot(sampler.traj_N[-2,:,0], sampler.traj_N[-2,:,1], 'g')
         plt.plot(sampler.top_trajs[0,:,0], sampler.top_trajs[0,:,1], 'blue')
         print("Total time: ", time.time()-t_1)
         # print(sampler.top_trajs[0,:,:2])
-        plt.savefig(plt_save_file_name)
-        # plt.show()
+        # plt.savefig(plt_save_file_name)
+        plt.show()
         plt.clf()
-        # quit()
+        quit()
 
 
 
