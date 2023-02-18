@@ -24,16 +24,19 @@ import signal
 import time
 
 now = datetime.now()
-dataset_dir = "/scratch/parth.shah/carla_manual/" + now.strftime("%m-%d-%Y_%H:%M:%S") + "/"
+dataset_dir = "/home/aditya/deb_data/carla_manual/" + now.strftime("%m-%d-%Y_%H:%M:%S") + "/"
 
 
-temp_dir = "/scratch/parth.shah/temp/"
+temp_dir = "/home/aditya/deb_data/temp/"
 
 def handler(signum, frame):
     msg = "Ctrl-c was pressed. Do you want to save? y/n "
     print(msg)
     res = input()
     if res == 'y':
+
+        os.makedirs(dataset_dir + "bev", exist_ok=True)
+        os.makedirs(dataset_dir + "storm", exist_ok=True)
         print("Saving the current data to ", dataset_dir)
         os.system('scp -r ' + temp_dir + " " + dataset_dir)
 
@@ -49,15 +52,13 @@ def teleop_callbak(data):
     steer = -data.angular.z
     vel = data.linear.x
     
-    # print("Steer: ", steer, "Vel: ", vel)
+    print("Steer: ", steer, "Vel: ", vel)
 
     steer = np.clip(steer / 30, -1, 1) 
 
     action = [vel, steer]
 
 def run():
-
-    temp_dir = "/home/aditya/deb_data/"
     os.makedirs(temp_dir + "bev", exist_ok=True)
     os.makedirs(temp_dir + "storm", exist_ok=True)
 

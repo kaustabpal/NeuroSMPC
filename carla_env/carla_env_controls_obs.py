@@ -93,7 +93,8 @@ class CarEnv(gym.Env):
 		client = carla.Client('127.0.0.1', 2000)
 		client.set_timeout(10.0)
 		# client.load_world('Town04')
-		client.load_world('Town10HD')
+		client.load_world('Town05')
+		# client.load_world('Town10HD')
 		self.world = client.get_world()
 		settings = self.world.get_settings()
 		settings.synchronous_mode = True
@@ -451,7 +452,7 @@ class CarEnv(gym.Env):
 		bev_obs = cv2.dilate(bev_obs, kernel, iterations=1)
 		'''
 
-		g_path = self.get_next_waypoints_in_ego_frame(40, 1)
+		g_path, g_path_wpts = self.get_next_waypoints_in_ego_frame(40, 1)
 		# Scaling the points to the image size
 		g_path_in_image_scale = g_path[:, :2]*scale + img_size[0]//2
 
@@ -462,7 +463,7 @@ class CarEnv(gym.Env):
 			obs_pose_in_image_scale = dyn_obs_poses[:, :2]*scale + img_size[0]//2
 			obs_pose_in_image_scale = np.clip(np.intp(obs_pose_in_image_scale[:, :2]), 0, 255)
 
-		left_lane_pts, right_lane_pts = self.get_lane_boundaries(40)
+		left_lane_pts, right_lane_pts = self.get_lane_boundaries(g_path_wpts)
 		# quit()
 		#   Scaling Points to image size
 		left_lane_pt_in_image_scale = left_lane_pts*scale + img_size[0]//2
@@ -581,7 +582,7 @@ class CarEnv(gym.Env):
 		obstacle_bev = np.zeros((img_size[0], img_size[1]), dtype=np.uint8)
 		obstacle_bev[obs_mask] = 255 # Obstacles - White
 		
-		return bev, obstacle_bev, np.array(g_path_in_image_scale), np.array(left_lane_pt_in_image_scale), np.array(right_lane_pt_in_image_scale), np.array(obs_pose_in_image_scale)
+		return bev, obstacle_bev, np.array(g_path_in_image_scale), np.array(left_lane_pt_in_image_scale), np.array(right_lane_pt_in_image_scale), np.array(dyn_obs_poses)
 	
 	def get_obs_pose(self, obs_range):
 		ego_tf = np.array(self.ego.get_transform().get_matrix())
@@ -609,13 +610,13 @@ class CarEnv(gym.Env):
 		#  Stored as x,y,theta,v,w
 		return np.array(obs_pose_wrt_ego)
 	
-	def get_lane_boundaries(self, num_pts = 40):
-		global_path_wps = self.global_path_wps
+	def get_lane_boundaries(self, g_path_wpts):
+		global_path_wps = g_path_wpts
 		ego_tf = np.array(self.ego.get_transform().get_matrix())
 
 		left_lane_pts_wrt_ego = []
 		right_lane_pts_wrt_ego = []
-		for i in range(num_pts):
+		for i in range(len(global_path_wps)):
 			orientationVec = global_path_wps[i].transform.get_forward_vector()
 			length = math.sqrt(orientationVec.y*orientationVec.y+orientationVec.x*orientationVec.x)
 			abVec = carla.Location(orientationVec.y,-orientationVec.x,0) / length * 0.5* global_path_wps[i].lane_width
@@ -704,6 +705,8 @@ class CarEnv(gym.Env):
 	
 	def get_next_waypoints_in_ego_frame(self, num_wpts=10, dist_between_wpts=1):
 		global_path = self.global_path
+
+		global_path_wp = self.global_path_wps
 		
 		global_path_tf = self.global_path_tf
 		
@@ -727,18 +730,20 @@ class CarEnv(gym.Env):
 		# print("Nearest- ", nearest_wpt_idx)
 
 		next_wpts = []
+		next_gp_wpts = []
 		for i in range(num_wpts):
 			if nearest_wpt_idx + i >= len(global_path):
 				break
 			
 			nearest_wpt_tf_in_ego_frame = global_path_relative_tf[nearest_wpt_idx + i]
 			coords = nearest_wpt_tf_in_ego_frame[0:3, 3]
+			next_gp_wpts.append(global_path_wp[nearest_wpt_idx + i])
 
 			next_wpts.append(coords)
 
 		next_wpts = np.array(next_wpts)
 		# next_wpts[:, 1] = -next_wpts[:, 1]
-		return np.array(next_wpts)
+		return np.array(next_wpts), next_gp_wpts
 
 	def add_traffic(self):
 		if self.traffic_manager is None:
@@ -761,6 +766,7 @@ class CarEnv(gym.Env):
 				vehicle.set_autopilot(True)
 				self.vehicles.append(vehicle)
 				# self.traffic_manager.set_desired_speed(vehicle, 3)
+				self.traffic_manager.ignore_lights_percentage(vehicle,100)
 				count -= 1
 		self.traffic_manager.global_percentage_speed_difference(80)
 	

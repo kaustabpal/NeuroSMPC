@@ -41,6 +41,18 @@ def global_to_frenet(obstacle_array, new_global_path, g_path):
         
     return np.array(frenet_obs)
 
+def global_to_frenet_lane(lane_pts, new_global_path, g_path):
+    path_arc_lengths = new_global_path[:, 1]
+    frenet_obs = []
+    for i in range(lane_pts.shape[0]):
+        dists_from_path = np.linalg.norm(lane_pts[i] - g_path, axis=1)
+        nearest_point_idx = np.argmin(dists_from_path)
+        nearest_point_to_obs = path_arc_lengths[nearest_point_idx]
+        min_dist_from_path = np.sign(lane_pts[0][0])*dists_from_path[nearest_point_idx] + new_global_path[i][0]
+        frenet_obs.append([min_dist_from_path, nearest_point_to_obs])
+        
+    return np.array(frenet_obs)
+
 def frenet_to_global(trajectory, new_global_path, g_path, dt):
     trajectory = trajectory.numpy()
     new_global_path = new_global_path[:-2]

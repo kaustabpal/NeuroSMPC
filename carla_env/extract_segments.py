@@ -2,7 +2,7 @@ import os
 import numpy as np
 import json
 
-base_folder = "/scratch/carla_manual_10-2-2022-segments/"
+base_folder = "/home/aditya/deb_data/carla_manual/"
 
 file_path = os.path.join(base_folder, "segments.json")
 with open(file_path, "r") as f:
