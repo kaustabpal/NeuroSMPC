@@ -55,7 +55,9 @@ class LocalPlanner:
 
         self.model = MLP()
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.model.load_state_dict(torch.load('/car/road-net/mlp_model.state_dict', map_location=torch.device(self.device)))
+        self.model_path = "/home/aditya/Documents/dexbee_car/model_weights/road-net/mlp_model.state_dict"
+        self.model.load_state_dict(torch.load(self.model_path, map_location=torch.device(self.device)))
+        self.model.to(self.device)
 
         self.ego_dim = [1.8, 1.8]
         self.img_size = [256, 256]
@@ -71,14 +73,15 @@ class LocalPlanner:
         self.odom_ts = None
 
         self.save_data = False
-        self.save_dir = "/scratch/parth.shah/car_data/" + datetime.now().strftime("%m-%d-%Y_%H:%M:%S") + "/"
+        self.save_dir = "/home/aditya/Documents/dexbee_car/data/" + datetime.now().strftime("%m-%d-%Y_%H:%M:%S") + "/"
         if self.save_data:
             os.makedirs(self.save_dir + "storm", exist_ok=True)
             os.makedirs(self.save_dir + "bev", exist_ok=True)
+            os.makedirs(self.save_dir + "plot", exist_ok=True)
 
         self.dexbee = DeXBee()
 
-        self.visualize = True
+        self.visualize = False
         if self.visualize:
             plt.ion()
             self.fig, self.ax = plt.subplots(1, 2, figsize=(10, 5))
@@ -166,6 +169,7 @@ class LocalPlanner:
         while not rospy.is_shutdown():
             toc = time.time()
             if tic is not None and toc - tic > 0.00001:
+                print("---")
                 print("Planning time: {}".format(toc - tic))
                 print("--------------------------------"*2)
             tic =  time.time()
@@ -287,6 +291,7 @@ class LocalPlanner:
                 "speed": ego_speed
             }
 
+            file_name = None
             if self.save_data:
                 with open(self.save_dir + "storm/data_" + str(i) + ".pkl", "wb") as f:
                     pickle.dump(data, f)
@@ -294,13 +299,16 @@ class LocalPlanner:
                 file_name = self.save_dir + "bev/bev_{}.jpg".format(i)
                 cv2.imwrite(file_name, bev)
 
+                file_name = self.save_dir + "plot/plot_{}.jpg".format(i)
+
+
             if self.visualize:
                 self.ax[0].imshow(bev)
                 self.ax[1].imshow(obstacle_bev)
                 plt.show()
 
             tic1 = time.time()
-            best_path, best_controls = self.dexbee.generate_path(obstacle_bev, g_path_img[:, :2], ego_speed)
+            best_path, best_controls = self.dexbee.generate_path(obstacle_bev, g_path_img[:, :2], ego_speed, file_name)
             toc1 = time.time()
             print("dexbee time", toc1 - tic1)
             i += 1 
