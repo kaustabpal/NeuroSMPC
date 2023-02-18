@@ -42,7 +42,7 @@ class DeXBee:
         print("Device : ", self.device)
 
         self.visualize = False
-        self.save = False
+        self.save = True
 
         if self.visualize or self.save:
             self.fig, self.ax = plt.subplots(1,1,figsize=(10,10))
@@ -50,12 +50,30 @@ class DeXBee:
             plt.ion()
 
     def to_continuous(self, obs):
-        obs_pos = []    
-        for j in range(obs.shape[0]):
-            for k in range(obs.shape[1]):
-                if(obs[j,k]==255):
-                    new_x, new_y = rotate([256/2,256/2],[k,j],np.deg2rad(180))
-                    obs_pos.append([new_x*30/256,new_y*30/256])
+        # obs_pos = []    
+        # for j in range(obs.shape[0]):
+        #     for k in range(obs.shape[1]):
+        #         if(obs[j,k]==255):
+        #             new_x, new_y = rotate([256/2,256/2],[k,j],np.deg2rad(180))
+        #             obs_pos.append([new_x*30/256,new_y*30/256])
+
+        obs_ = np.copy(obs)
+        # obs_ = np.flip(obs_, axis=0)
+        # obs_ = np.flip(obs_.T, axis=0)
+        obs_ = obs_.T
+        obs_ = np.flip(obs_, axis=  1)
+        obs_pos = np.argwhere(obs_ == 255)
+
+        # qx = ox + np.cos(angle) * (px - ox) - np.sin(angle) * (py - oy)
+        # qy = oy + np.sin(angle) * (px - ox) + np.cos(angle) * (py - oy)
+        # return -qx+127, qy-127
+        
+        # diff = obs_pos - 128
+
+        # new_obs_pos = np.vstack((-diff[:,0] + 127, diff[:,1]-127)).T
+
+        obs_pos = (obs_pos-128) * 30/256
+
         return obs_pos
 
     def generate_path(self, obstacle_array, global_path, current_speed, save_filename):

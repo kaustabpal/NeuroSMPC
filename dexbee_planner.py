@@ -72,7 +72,7 @@ class LocalPlanner:
         self.odom = None
         self.odom_ts = None
 
-        self.save_data = False
+        self.save_data = True
         self.save_dir = "/home/aditya/Documents/dexbee_car/data/" + datetime.now().strftime("%m-%d-%Y_%H:%M:%S") + "/"
         if self.save_data:
             os.makedirs(self.save_dir + "storm", exist_ok=True)
