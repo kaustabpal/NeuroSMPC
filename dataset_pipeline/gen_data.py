@@ -18,13 +18,13 @@ torch.manual_seed(42)
 
 @dataclass
 class Args:
-    occ_map_dir: str = '/Users/kaustabpal/work/carla_latest/occ_map/' # '/scratch/kaustab.pal/iros_23/dataset/' #'../iros_23/dataset/' #'/scratch/kaustab.pal/iros_23/dataset/' # 'data/dataset_beta/'
-    mean_dir: str = '/Users/kaustabpal/work/carla_latest/mean_controls/' #'/scratch/kaustab.pal/iros_23/weights/' #'../iros_23/weights/' #'/scratch/kaustab.pal/iros_23/weights/' 
-    plot_im_dir: str = '/Users/kaustabpal/work/carla_latest/plot_im/' #'/scratch/kaustab.pal/iros_23/loss/'  #'../iros_23/loss/' #'/scratch/kaustab.pal/iros_23/loss/' 
+    occ_map_dir: str = '/scratch/kaustab.pal/iros/dataset/occ_map/' 
+    mean_dir: str = '/scratch/kaustab.pal/iros/dataset/mean_controls/'  
+    plot_im_dir: str = '/scratch/kaustab.pal/iros/dataset//plot_im/' 
     # val_split: float = 0.3
     # num_epochs: int = 500
     # seed: int = 12321
-    exp_id: str = 'exp1'
+    exp_id: str = 'exp2'
 args = tyro.cli(Args)
 
 def to_continuous(obs):
@@ -37,6 +37,7 @@ def to_continuous(obs):
     return obs_pos
 
 def run():
+    print("Starting run")
     np.set_printoptions(suppress=True)
     dataset_dir = args.occ_map_dir
     plot_im_dir = args.plot_im_dir
@@ -44,7 +45,7 @@ def run():
     os.makedirs(plot_im_dir, exist_ok=True)
     os.makedirs(mean_dir, exist_ok=True)
     files = os.listdir(dataset_dir)
-    print("Dataset size: ", len(files)-1)
+    print("Dataset size: ", len(files))
     for i in range(0,len(files)):
         t_1 = time.time()
         
@@ -57,12 +58,12 @@ def run():
             
         ego_speed = 0
         iter = 0
-        if "speed" in data.keys():
-            ego_speed = data["speed"]
-        else:
-            continue
-            # ego_speed = 4.13
-        print(i,ego_speed)
+        #if "speed" in data.keys():
+        #    ego_speed = data["speed"]
+        #else:
+        #    continue
+        #    # ego_speed = 4.13
+        print(i)
 
         obs = data['obstable_array'] # obstacle pos in euclidean space
         
@@ -78,7 +79,7 @@ def run():
         
         obs_pos_frenet = global_to_frenet(obs_pos, new_g_path, interpolated_g_path)
 
-        sampler = Goal_Sampler(torch.tensor([0,0,np.deg2rad(ego_theta)]), ego_speed, 0, obstacles=obs_pos_frenet)
+        sampler = Goal_Sampler(torch.tensor([0,0,np.deg2rad(ego_theta)]), 4, 0, obstacles=obs_pos_frenet)
         t1 = time.time()
         sampler.plan_traj()
         # print("Planning time: ", time.time()-t1)
@@ -95,7 +96,7 @@ def run():
         sampler.mean_action = torch.as_tensor(mean_controls)
         sampler.c_state = torch.tensor([0,0,np.deg2rad(90)])
         sampler.infer_traj()
-        # np.save(mean_save_filename,sampler.mean_action)
+        np.save(mean_save_filename,sampler.mean_action)
         
         ## plot
         plt.scatter(g_path[:,0],g_path[:,1],color='blue', alpha=0.1)
@@ -115,9 +116,9 @@ def run():
         plt.title("Ego velocity: "+str(round(ego_speed,2)))
         # print(sampler.top_trajs[0,:,:2])
         plt.savefig(plt_save_file_name)
-        plt.show()
+        #plt.show()
         plt.clf()
-        quit()
+        #quit()
 
 
 
