@@ -19,7 +19,7 @@ torch.manual_seed(42)
 
 @dataclass
 class Args:
-    occ_map_dir: str = '/Users/kaustabpal/work/carla_latest/occ_map/' # '/scratch/kaustab.pal/iros_23/dataset/' #'../iros_23/dataset/' #'/scratch/kaustab.pal/iros_23/dataset/' # 'data/dataset_beta/'
+    occ_map_dir: str = '/scratch/kaustab.pal/iros/dataset/occ_map/' # '/scratch/kaustab.pal/iros_23/dataset/' #'../iros_23/dataset/' #'/scratch/kaustab.pal/iros_23/dataset/' # 'data/dataset_beta/'
     mean_dir: str = '/Users/kaustabpal/work/carla_latest/mean_controls/' #'/scratch/kaustab.pal/iros_23/weights/' #'../iros_23/weights/' #'/scratch/kaustab.pal/iros_23/weights/' 
     plot_im_dir: str = '/Users/kaustabpal/work/carla_latest/plot_im/' #'/scratch/kaustab.pal/iros_23/loss/'  #'../iros_23/loss/' #'/scratch/kaustab.pal/iros_23/loss/' 
     # val_split: float = 0.3
@@ -42,11 +42,11 @@ def run():
     dataset_dir = args.occ_map_dir
     plot_im_dir = args.plot_im_dir
     mean_dir = args.mean_dir
-    os.makedirs(plot_im_dir, exist_ok=True)
-    os.makedirs(mean_dir, exist_ok=True)
+    #os.makedirs(plot_im_dir, exist_ok=True)
+    #os.makedirs(mean_dir, exist_ok=True)
     files = os.listdir(dataset_dir)
     print("Dataset size: ", len(files)-1)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = "cpu" #torch.device("cuda" if torch.cuda.is_available() else "cpu")
     for i in range(1255,len(files)):
         t_1 = time.time()
         
@@ -99,14 +99,14 @@ def run():
         mean_controls = sampler2.mean_action
         mean_traj = sampler2.traj_N[-2,:,:]
         cov_controls = sampler2.scale_tril
-        mean_controls[:,1] = frenet_to_global(mean_traj.detach(), new_g_path, interpolated_g_path, 0.1)
+        mean_controls[:,1] = frenet_to_global(mean_traj.detach().cpu(), new_g_path, interpolated_g_path, 0.1)
         sampler2.obstacles = obs_pos
         sampler2.mean_action = torch.as_tensor(mean_controls)
         sampler2.c_state = torch.tensor([0,0,np.deg2rad(90)])
         sampler2.infer_traj()
         print("Sampler2 time:", time.time()-t2)
         # np.save(mean_save_filename,sampler.mean_action)
-        
+        #quit()
         ## plot
         plt.scatter(g_path[:,0],g_path[:,1],color='blue', alpha=0.1)
 
@@ -126,9 +126,9 @@ def run():
         plt.legend(loc="upper left")
         # print(sampler.top_trajs[0,:,:2])
         # plt.savefig(plt_save_file_name)
-        plt.show()
+        #plt.show()
         plt.clf()
-        quit()
+        #quit()
 
 
 

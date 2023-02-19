@@ -17,7 +17,7 @@ np.set_printoptions(suppress=True)
 class GradCEM:
     def __init__(self, c_state, vl, wl, obstacles, num_particles = 500, device='cpu'):
         # agent info
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # "cpu"
+        self.device = "cpu" # torch.device("cuda" if torch.cuda.is_available() else "cpu") # "cpu"
         self.radius = 1.80
         self.c_state = c_state # start state
         # self.c_state.device = self.device
@@ -135,7 +135,7 @@ class GradCEM:
     def sample_controls(self, inference = False):
         uniform_halton_samples = torch.tensor(self.sequencer.get(self.sample_shape), device=self.device) # samples N control points
         erfinv = torch.erfinv(2 * uniform_halton_samples - 1)
-        knot_points = torch.sqrt(torch.tensor([2.0])) * erfinv
+        knot_points = torch.sqrt(torch.tensor([2.0],device=self.device)) * erfinv
         # print(knot_points.shape)
         knot_samples = knot_points.view(self.sample_shape, self.d_action, self.n_knots)
         # print(knot_samples.shape)
@@ -148,10 +148,10 @@ class GradCEM:
         delta = self.samples
         z_seq = torch.zeros(1,self.horizon,self.d_action, device=self.device)
         delta = torch.cat((delta,z_seq),dim=0)
-        scaled_delta = torch.matmul(delta, self.full_scale_tril.float()).view(delta.shape[0],
+        scaled_delta = torch.matmul(delta, self.full_scale_tril).view(delta.shape[0],
                                                                     self.horizon,
                                                                     self.d_action)   
-        act_seq = self.mean_action.unsqueeze(0) + scaled_delta
+        act_seq = self.mean_action.unsqueeze(0).to(self.device) + scaled_delta.to(self.device)
         # if(inference == False):
         #     act_seq = torch.cat((act_seq,torch.(1,self.horizon,self.d_action)),dim=0)
         # if(inference == True):
@@ -229,7 +229,7 @@ class GradCEM:
             # Obstacle avoidance
             t1 = time.time()
             threshold_dist = self.radius + self.obst_radius
-            d_to_o = torch.cdist(self.traj_N[i,:,:2], torch.tensor(self.obstacles,dtype=torch.float32), p=2)
+            d_to_o = torch.cdist(self.traj_N[i,:,:2], torch.tensor(self.obstacles,dtype=torch.float32,device=self.device), p=2)
             self.collision_cost_N[i] += torch.sum((d_to_o<threshold_dist).type(torch.float32))
             # quit()
             # for o in self.obstacles:
@@ -296,7 +296,7 @@ class GradCEM:
         self.cov_action = self.init_cov_action
         self.scale_tril = torch.sqrt(self.cov_action)
         self.full_scale_tril = torch.diag(self.scale_tril)
-        for i in range(5):
+        for i in range(10):
             # print(i)
             # self.scale_tril = torch.sqrt(self.cov_action)
             # self.full_scale_tril = torch.diag(self.scale_tril)
@@ -332,7 +332,7 @@ class GradCEM:
     
     def infer_traj(self):
         t1 = time.time()
-        self.init_cov_action = torch.tensor([0.09, 0.09])
+        self.init_cov_action = torch.tensor([0.09, 0.09],device = self.device)
         self.cov_action = self.init_cov_action
         self.scale_tril = torch.sqrt(self.cov_action)
         self.full_scale_tril = torch.diag(self.scale_tril)
