@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from carla_env.carla_env_wpts import CarEnv
+from carla_env.carla_env_wpts_obs import CarEnv
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,7 +17,7 @@ import pickle
 
 now = datetime.now()
 
-dataset_dir = "/scratch/parth.shah/carla_auto/" + now.strftime("%m-%d-%Y_%H:%M:%S") + "/"
+dataset_dir = "/scratch/parth.shah/carla_auto_obs/" + now.strftime("%m-%d-%Y_%H:%M:%S") + "/"
 temp_dir = "/scratch/parth.shah/temp/"
 
 save_data = True
