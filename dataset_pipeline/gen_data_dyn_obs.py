@@ -49,7 +49,7 @@ def run():
 	files = os.listdir(dataset_dir)
 	time_arr = np.linspace(0, 3.0, 31)
 	print(len(files)-1)
-	for i in range(250, len(files)):
+	for i in range(len(files)):
 		t_1 = time.time()
 		print(i)
 		obs_pos = []
@@ -115,8 +115,19 @@ def run():
 		# plt.scatter(new_g_path[:,0],new_g_path[:,1],color='blue', alpha=0.7)
 		# plt.scatter(left_lane_frenet[:,0],left_lane_frenet[:,1],color='red', alpha=0.7)
 		# plt.scatter(right_lane_frenet[:,0],right_lane_frenet[:,1],color='green', alpha=0.7)
-		# for i in range(len(obs_pos_frenet)):
-		# 	plt.scatter(obs_pos_frenet[i][:,0],obs_pos_frenet[i][:,1],color='orange', alpha=0.7)
+		obs_pos_frenet = []
+		nxobs = 0.0 + np.cos(np.pi/2)*time_arr
+		nyobs = 50.0 + 100.0*np.sin(np.pi/2)*time_arr
+		traj = np.vstack((nxobs, nyobs)).T
+
+		# nxobs = 3.5 + np.cos(np.pi/2)*time_arr
+		# nyobs = 5.0 + 0.0*np.sin(np.pi/2)*time_arr
+		# traj = np.vstack((nxobs, nyobs)).T
+		obs_pos_frenet = traj.reshape(1, 31, 2)
+		print(obs_pos_frenet)
+
+		for i in range(len(obs_pos_frenet)):
+			plt.scatter(obs_pos_frenet[i][:,0],obs_pos_frenet[i][:,1],color='black', alpha=0.7)
 
 		obs_pos_frenet = np.array(obs_pos_frenet)
 		# print(obs_pos_frenet[0])
@@ -124,7 +135,7 @@ def run():
 
 		print(data["speed"])
 
-		sampler = Goal_Sampler(torch.tensor([0,0,np.deg2rad(ego_theta)]), data["speed"], 0.0, obstacles=obs_pos_frenet)
+		sampler = Goal_Sampler(torch.tensor([0,0,np.deg2rad(ego_theta)]), 4.0, 0.0, obstacles=obs_pos_frenet)
 		sampler.left_lane_bound = np.median(left_lane_frenet[:, :1])
 		sampler.right_lane_bound = np.median(right_lane_frenet[:, :1])
 		# sampler.initialize()
@@ -180,10 +191,10 @@ def run():
 		# print(sampler.top_trajs[0,:,:2])
 		plt.savefig(plt_save_file_name)
 		plt.axis('equal')
-		plt.pause(0.001)
-		# plt.show()
+		# plt.pause(0.001)
+		plt.show()
 		plt.clf()
-		# quit()
+		quit()
 
 
 
