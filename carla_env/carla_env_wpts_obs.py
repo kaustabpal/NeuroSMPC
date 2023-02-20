@@ -203,6 +203,10 @@ class CarEnv(gym.Env):
         
         self.speed_pid = PID(0.1, 0.0, 0.0, SP = 0.0, output_limits=[-1.0, +1.0])
 
+        self.collision_hist = []
+        self.collision_hist_len = 1
+        self.collision_bp = self.world.get_blueprint_library().find('sensor.other.collision')
+
         atexit.register(self.close)
 
     def _next_observation(self):
@@ -321,7 +325,10 @@ class CarEnv(gym.Env):
             done = True
 
         # Only for training
-        if self.frame >= 5000:
+        # if self.frame >= 5000:
+        #     done = True
+
+        if len(self.collision_hist)>0: 
             done = True
 
         return obs, reward, done, {}
@@ -365,6 +372,17 @@ class CarEnv(gym.Env):
         self.dummy = self.world.spawn_actor(
             dummy_bp, dummy_transform, attach_to=self.ego, attachment_type=carla.AttachmentType.SpringArm)
         self.dummy.listen(lambda image: dummy_function(image))
+
+        # Attach Collision Sensor
+        self.collision_sensor = self.world.spawn_actor(self.collision_bp, carla.Transform(), attach_to=self.ego)
+        self.collision_sensor.listen(lambda event: get_collision_hist(event))
+        def get_collision_hist(event):
+            impulse = event.normal_impulse
+            intensity = np.sqrt(impulse.x**2 + impulse.y**2 + impulse.z**2)
+            self.collision_hist.append(intensity)
+            if len(self.collision_hist)>self.collision_hist_l:
+                self.collision_hist.pop(0)
+            self.collision_hist = []
 
         # Wait for the sensors to be ready
         for i in range(10):  # Some buffer time at the start of the episode
