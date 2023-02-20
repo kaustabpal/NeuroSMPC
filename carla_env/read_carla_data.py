@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from carla_env_cont import CarEnv
+from carla_env.carla_env_controls import CarEnv
 import numpy as np
 
 import time
@@ -13,7 +13,7 @@ import os
 
 def run():
     np.set_printoptions(suppress=True)
-    dataset_dir = "/scratch/parth.shah/carla_manual/02-10-2023_04:28:41"
+    dataset_dir = "/Users/kaustabpal/Downloads/02-17-2023_23-21-26" #"/scratch/parth.shah/carla_manual/02-10-2023_04:28:41"
     
     files = os.listdir(dataset_dir)
     
@@ -30,6 +30,8 @@ def run():
         speed = data["speed"]
         # print(type(g_path), g_path.shape)
         print(speed)
+        print(data["speed"])
+        quit()
         
         obstacle_array = np.reshape(obstable_array, (256,256,1))
         # print(obstable_array.shape)

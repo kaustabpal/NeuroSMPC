@@ -6,16 +6,20 @@ from carla_env.utils.transforms import se3_to_components
 import time
 import atexit
 
+import math
+
 import random
 
 import cv2
+from scipy.spatial.transform import Rotation as R
 
-from carla import Transform, Location, Rotation
+import logging
 
 # from agents.navigation.basic_agent import BasicAgent
 # from agents.navigation.behavior_agent import BehaviorAgent
 
 from carla_env.utils.custom_pid import PID
+from carla_env.utils.stanley_controller import Stanley
 
 DEBUG = False
 
@@ -60,11 +64,22 @@ class CarEnv(gym.Env):
         # GYM env
         ##########
 
+        self.L = 1.9
+        self.predict_dt = 1
+
+        min_speed = 0.5
+        max_speed = 4
+        max_steer = 0.5
+
+        max_x, min_x = 100, -100
+        max_y, min_y = 100, -100
+        
         # Define action and observation space
         # They must be gym.spaces objects
+
         self.action_space = spaces.Box(
-            low=np.array([0.2, -0.3]),
-            high=np.array([0.6, 0.3]),
+            low=np.array([min_x, min_y, min_x, min_y, min_x, min_y, min_x, min_y, min_x, min_y, min_x, min_y]),
+            high=np.array([max_x, max_y, max_x, max_y, max_x, max_y, max_x, max_y, max_x, max_y, max_x, max_y]),
             dtype=np.float32
         )
 
@@ -91,7 +106,9 @@ class CarEnv(gym.Env):
         # Settin Up the World
         client = carla.Client('127.0.0.1', 2000)
         client.set_timeout(10.0)
-        client.load_world('Town03')
+        # client.load_world('Town04')
+        client.load_world('Town05')
+        # client.load_world('Town10HD')
         self.world = client.get_world()
         settings = self.world.get_settings()
         settings.synchronous_mode = True
@@ -159,11 +176,19 @@ class CarEnv(gym.Env):
         self.bev = None
         self.obstacle_bev = None
         self.next_g_path = None
+
+        # Stanley Controller
+        self.stanley = Stanley()
+
+        self.left_lane_coords = None
+        self.right_lane_coords = None
+        self.dyn_obs_poses = None
         
         # Global Path
         self.global_path = None
         self.global_path_tf = None
         self.global_path_carla = None
+        self.global_path_wps = None
 
         ### Traffic Manager
         self.traffic_manager = None
@@ -177,6 +202,10 @@ class CarEnv(gym.Env):
             self.traffic_manager_port = self.traffic_manager.get_port()
         
         self.speed_pid = PID(0.1, 0.0, 0.0, SP = 0.0, output_limits=[-1.0, +1.0])
+
+        self.collision_hist = []
+        self.collision_hist_len = 1
+        self.collision_bp = self.world.get_blueprint_library().find('sensor.other.collision')
 
         atexit.register(self.close)
 
@@ -220,7 +249,7 @@ class CarEnv(gym.Env):
         self.speed_ego = speed_ego
         return observation
 
-    def step(self, action):
+    def step(self, trajectory, target_speed):
 
         self.frame += 1
 
@@ -229,19 +258,24 @@ class CarEnv(gym.Env):
         vel_ego = self.ego.get_velocity()
         speed_ego = np.linalg.norm(np.array([vel_ego.x, vel_ego.y]))
         
-        target_speed = action[0]
-
-        acc = self.speed_pid.get_output(target_speed, speed_ego, dt = 0.1)
-
-        if acc > 0:
-            throttle = acc
-            brake = 0
-        else:
-            throttle = 0
-            brake = abs(acc)
-
-        steer = action[1]
         
+        self.stanley.set_current_speed(speed_ego)
+        self.stanley.set_target_speed(target_speed)
+
+        try:
+            self.stanley.set_waypoints(trajectory)
+        except Exception as e:
+            print(e)
+            print("Trajectory : ", trajectory)
+            print("Velocity : ", np.round(target_speed,2))
+            exit()
+
+        action, ret_val = self.stanley.get_controls()
+
+        throttle = action[0]
+        brake = action[1]
+        steer = action[2]      
+
         self.ego.apply_control(carla.VehicleControl(
             throttle=float(throttle), steer=float(steer), brake=float(brake)))
         # print(action)
@@ -291,7 +325,10 @@ class CarEnv(gym.Env):
             done = True
 
         # Only for training
-        if self.frame >= 5000:
+        # if self.frame >= 5000:
+        #     done = True
+
+        if len(self.collision_hist)>0: 
             done = True
 
         return obs, reward, done, {}
@@ -336,6 +373,17 @@ class CarEnv(gym.Env):
             dummy_bp, dummy_transform, attach_to=self.ego, attachment_type=carla.AttachmentType.SpringArm)
         self.dummy.listen(lambda image: dummy_function(image))
 
+        # Attach Collision Sensor
+        self.collision_sensor = self.world.spawn_actor(self.collision_bp, carla.Transform(), attach_to=self.ego)
+        self.collision_sensor.listen(lambda event: get_collision_hist(event))
+        def get_collision_hist(event):
+            impulse = event.normal_impulse
+            intensity = np.sqrt(impulse.x**2 + impulse.y**2 + impulse.z**2)
+            self.collision_hist.append(intensity)
+            if len(self.collision_hist)>self.collision_hist_l:
+                self.collision_hist.pop(0)
+            self.collision_hist = []
+
         # Wait for the sensors to be ready
         for i in range(10):  # Some buffer time at the start of the episode
             global process_lidar
@@ -351,7 +399,7 @@ class CarEnv(gym.Env):
         # Add traffic
         self.vehicle_spawn_points = list(self.world.get_map().get_spawn_points())
         self.add_traffic()
-
+        
         # self.ego_agent = BasicAgent(self.ego)
 
         # destination = self.global_path_carla[-1]
@@ -370,6 +418,10 @@ class CarEnv(gym.Env):
 
         # self.traffic_manager.vehicle_percentage_speed_difference(self.ego, -50)
         # self.traffic_manager.set_path(self.ego, self.global_path_carla)
+
+        print("Waiting for environment to be ready...")
+        for i in range(10):
+            self.world.tick()
 
         return self._next_observation()
 
@@ -422,14 +474,14 @@ class CarEnv(gym.Env):
         self.semantic_lidar_pcd = np.concatenate([self.non_car_pts, self.car_pts], axis=0)
 
         # Generate BEV
-        self.bev, self.obstacle_bev, self.next_g_path = self.generate_bev((256, 256), range = 15, z_max=1)
+        self.bev, self.obstacle_bev, self.next_g_path, self.left_lane_coords, self.right_lane_coords, self.dyn_obs_poses = self.generate_bev((256, 256), sensing_range = 15, z_max=1)
     
-    def generate_bev(self, img_size, range, z_max):
+    def generate_bev(self, img_size, sensing_range, z_max):
         assert img_size[0] == img_size[1], "BEV should be square"
         
         semantic_pcd = self.semantic_lidar_pcd
 
-        scale = img_size[0] / (2 * range)
+        scale = img_size[0] / (2 * sensing_range)
         
         # Creating a blank image
         bev = np.ones([img_size[0], img_size[0], 3], dtype=np.uint8)
@@ -441,8 +493,8 @@ class CarEnv(gym.Env):
         obs_pcd = semantic_pcd[obs_mask] 
 
         # finding the points that are in the vicinity of the ego
-        x_mask = np.abs(obs_pcd[:, 0]) < range
-        y_mask = np.abs(obs_pcd[:, 1]) < range
+        x_mask = np.abs(obs_pcd[:, 0]) < sensing_range
+        y_mask = np.abs(obs_pcd[:, 1]) < sensing_range
         z_mask = obs_pcd[:, 2] < z_max
         vicinity_mask = x_mask & y_mask & z_mask
         obs_pcd_near = obs_pcd[vicinity_mask]
@@ -463,10 +515,22 @@ class CarEnv(gym.Env):
         bev_obs = cv2.dilate(bev_obs, kernel, iterations=1)
         '''
 
-        g_path = self.get_next_waypoints_in_ego_frame(40, 1)
+        g_path, g_path_wpts = self.get_next_waypoints_in_ego_frame(40, 1)
         # Scaling the points to the image size
         g_path_in_image_scale = g_path[:, :2]*scale + img_size[0]//2
- 
+
+        dyn_obs_poses = self.get_obs_pose(sensing_range)
+        #   Scaling Points to image size
+        obs_pose_in_image_scale = []
+        if len(dyn_obs_poses)>0:
+            obs_pose_in_image_scale = dyn_obs_poses[:, :2]*scale + img_size[0]//2
+            obs_pose_in_image_scale = np.clip(np.intp(obs_pose_in_image_scale[:, :2]), 0, 255)
+
+        left_lane_pts, right_lane_pts = self.get_lane_boundaries(g_path_wpts)
+        # quit()
+        #   Scaling Points to image size
+        left_lane_pt_in_image_scale = left_lane_pts*scale + img_size[0]//2
+        right_lane_pt_in_image_scale = right_lane_pts*scale + img_size[0]//2
 
         ### Ego Layer
         ego_dim_x, ego_dim_y = 2.1, 4.7 # (in meters) # dimension are for tesla model 3 (in Carla)
@@ -479,6 +543,13 @@ class CarEnv(gym.Env):
         bev_ego = np.copy(bev)
         bev_ego = cv2.drawContours(bev_ego, [box.astype(int)], 0, [255, 255, 255], -1)
 
+        #   Drawing ellipse around obstacles
+        bev_dyn_obs_arr = []
+        for i in range(len(obs_pose_in_image_scale)):
+            bev_dyn_obs = np.copy(bev)
+            bev_dyn_obs = cv2.ellipse(bev_dyn_obs, (int(obs_pose_in_image_scale[i][1]), img_size[0] - int(obs_pose_in_image_scale[i][0])), (10,10), np.deg2rad(dyn_obs_poses[i][2]), 0, 360, (255, 255, 255), -1)
+            bev_dyn_obs_arr.append(bev_dyn_obs)
+
         # ### GlobalPath Layer
         # global_path_tf = self.global_path_tf
         
@@ -490,8 +561,8 @@ class CarEnv(gym.Env):
         # global_path_relative_coords = global_path_relative_tf[:, 0:3, 3]
 
         # Finding the points that are in the vicinity of the ego
-        x_mask = np.abs(g_path[:, 0]) < range
-        y_mask = np.abs(g_path[:, 1]) < range
+        x_mask = np.abs(g_path[:, 0]) < sensing_range
+        y_mask = np.abs(g_path[:, 1]) < sensing_range
         vicinity_mask = x_mask & y_mask
         global_path_relative_near = g_path[vicinity_mask]
 
@@ -504,30 +575,163 @@ class CarEnv(gym.Env):
         global_path_pixel_coords = global_path_relative_near[:, :2]*scale + img_size[0]// 2
         global_path_pixel_coords = np.clip(np.intp(global_path_pixel_coords[:, :2]), 0, 255)
 
+        #   LEFT LANE
+        # Finding the points that are in the vicinity of the ego
+        x_mask = np.abs(left_lane_pts[:, 0]) < sensing_range
+        y_mask = np.abs(left_lane_pts[:, 1]) < sensing_range
+        vicinity_mask = x_mask & y_mask
+        left_lane_relative_near = left_lane_pts[vicinity_mask]
+
+        # # Correcting Axis-Order
+        left_lane_relative_near = left_lane_relative_near[:, [1, 0]]
+        # Flipping Y-Axis
+        left_lane_relative_near[:, 1] = -left_lane_relative_near[:, 1]
+
+        # Scaling the points to the image size
+        left_lane_pixel_coords = left_lane_relative_near[:, :2]*scale + img_size[0]// 2
+        left_lane_pixel_coords = np.clip(np.intp(left_lane_pixel_coords[:, :2]), 0, 255)
+
+        #   RIGHTH LANE
+        # Finding the points that are in the vicinity of the ego
+        x_mask = np.abs(right_lane_pts[:, 0]) < sensing_range
+        y_mask = np.abs(right_lane_pts[:, 1]) < sensing_range
+        vicinity_mask = x_mask & y_mask
+        right_lane_relative_near = right_lane_pts[vicinity_mask]
+
+        # # Correcting Axis-Order
+        right_lane_relative_near = right_lane_relative_near[:, [1, 0]]
+        # Flipping Y-Axis
+        right_lane_relative_near[:, 1] = -right_lane_relative_near[:, 1]
+
+        # Scaling the points to the image size
+        right_lane_pixel_coords = right_lane_relative_near[:, :2]*scale + img_size[0]// 2
+        right_lane_pixel_coords = np.clip(np.intp(right_lane_pixel_coords[:, :2]), 0, 255)
+
         # Drawing the path on the image
         bev_global_path = np.copy(bev)
         if global_path_pixel_coords.shape[0] > 1:
             bev_global_path = cv2.polylines(bev_global_path, [global_path_pixel_coords], False, color=(255, 255, 255), thickness=3)
+        
+        #   LEFT LANE
+        # Drawing the path on the image
+        bev_left_lane = np.copy(bev)
+        if left_lane_pixel_coords.shape[0] > 1:
+            bev_left_lane = cv2.polylines(bev_left_lane, [left_lane_pixel_coords], False, color=(255, 255, 255), thickness=3)
+        
+        #   RIGHT LANE
+        # Drawing the path on the image
+        bev_right_lane = np.copy(bev)
+        if right_lane_pixel_coords.shape[0] > 1:
+            bev_right_lane = cv2.polylines(bev_right_lane, [right_lane_pixel_coords], False, color=(255, 255, 255), thickness=3)
 
          ### Combining the layers
         obs_mask = bev_obs[:, :, 0] == 255
         ego_mask = bev_ego[:, :, 0] == 255
         global_path_mask = bev_global_path[:, :, 0] == 255
+        left_lane_mask = bev_left_lane[:, :, 0] == 255
+        right_lane_mask = bev_right_lane[:, :, 0] == 255
+        dyn_obs_mask = []
+        for i in range(len(bev_dyn_obs_arr)):
+            dyn_obs_mask.append(bev_dyn_obs_arr[i][:, :, 0] == 255)
 
         bev[obs_mask] = [255, 255, 255] # Obstacles - White
         bev[global_path_mask] = [0, 0, 255] # Global Path - Blue
         bev[ego_mask] = [255, 0, 0] # Ego - Red
+        bev[left_lane_mask] = [0, 255, 0]
+        bev[right_lane_mask] = [0, 255, 0]
+        for i in range(len(dyn_obs_mask)):
+            bev[dyn_obs_mask[i]] = [255, 255, 0]
 
         obstacle_bev = np.zeros((img_size[0], img_size[1]), dtype=np.uint8)
         obstacle_bev[obs_mask] = 255 # Obstacles - White
         
-        return bev, obstacle_bev, np.array(g_path_in_image_scale)
+        return bev, obstacle_bev, np.array(g_path_in_image_scale), np.array(left_lane_pt_in_image_scale), np.array(right_lane_pt_in_image_scale), np.array(dyn_obs_poses)
+    
+    def get_obs_pose(self, obs_range):
+        ego_tf = np.array(self.ego.get_transform().get_matrix())
+        obs_pose_wrt_ego = []
+        for i in range(len(self.vehicles)):
+            #   Obstacle traneformation matrix
+            vehicle_tf = np.array(self.vehicles[i].get_transform().get_matrix())
+            #   Transformation of obs wrt ego
+            obs_wrt_ego = np.linalg.pinv(ego_tf) @ vehicle_tf
+            #  Rotation matrix
+            rot_mat = R.from_matrix(np.array(obs_wrt_ego[:3, :3]))
+            rel_yaw = np.rad2deg(np.array(rot_mat.as_rotvec())[-1])
+            #  The ego vehicle yaw is 90, hence this is required
+            if rel_yaw<0.0:
+                rel_yaw = rel_yaw + 360.0
+            rel_yaw = rel_yaw + 90.0
+
+            v = self.vehicles[i].get_velocity()
+            obs_v = ((v.x)**2 + (v.y)**2)**0.5
+            obs_w = self.vehicles[i].get_angular_velocity().z
+
+            #   If obstacle distance less thatn range(of bev), store pose
+            if (obs_wrt_ego[0, 3]**2 + obs_wrt_ego[1, 3]**2)**0.5 < obs_range:
+                obs_pose_wrt_ego.append([obs_wrt_ego[0, 3], obs_wrt_ego[1, 3], np.deg2rad(rel_yaw), obs_v, obs_w])
+        #  Stored as x,y,theta,v,w
+        return np.array(obs_pose_wrt_ego)
+    
+    def get_lane_boundaries(self, g_path_wpts):
+        global_path_wps = g_path_wpts
+        ego_tf = np.array(self.ego.get_transform().get_matrix())
+
+        left_lane_pts_wrt_ego = []
+        right_lane_pts_wrt_ego = []
+        for i in range(len(global_path_wps)):
+            orientationVec = global_path_wps[i].transform.get_forward_vector()
+            length = math.sqrt(orientationVec.y*orientationVec.y+orientationVec.x*orientationVec.x)
+            abVec = carla.Location(orientationVec.y,-orientationVec.x,0) / length * 0.5* global_path_wps[i].lane_width
+            lane_wpts = []
+            next_waypoint = global_path_wps[i]
+            #   Get the right most lane
+            while next_waypoint.get_right_lane() and next_waypoint.get_right_lane().lane_type == carla.LaneType.Driving:
+                next_waypoint = next_waypoint.get_right_lane()
+            lane_wpts.append(next_waypoint)
+            #   Get all lanes to the left of the right most lane
+            while next_waypoint.get_left_lane() and \
+                np.sign(next_waypoint.get_left_lane().lane_id) == np.sign(next_waypoint.lane_id) and \
+                next_waypoint.get_left_lane().lane_type == carla.LaneType.Driving:
+
+                next_waypoint = next_waypoint.get_left_lane()
+                lane_wpts.append(next_waypoint) 
+
+            #   Left most lane
+            left_lane_pt_wp = lane_wpts[-1]
+            right_lane_pt_wp = lane_wpts[0]
+            
+            left_lane_pt_wp = left_lane_pt_wp.transform.location + abVec
+            left_lane_pt_wp = [left_lane_pt_wp.x, left_lane_pt_wp.y, left_lane_pt_wp.z, 1]
+            right_lane_pt_wp = right_lane_pt_wp.transform.location - abVec
+            right_lane_pt_wp = [right_lane_pt_wp.x, right_lane_pt_wp.y, right_lane_pt_wp.z, 1]
+
+            #   Right most lane
+            left_lane_pt_wrt_ego = np.linalg.pinv(ego_tf) @ left_lane_pt_wp
+            right_lane_pt_wrt_ego = np.linalg.pinv(ego_tf) @ right_lane_pt_wp
+
+
+            # left_lanept = left_lane_pt_wrt_ego[:2, 3]
+            # left_lanept[0] = left_lanept[0] + abVec.x
+            # left_lanept[1] = left_lanept[0] + abVec.y
+
+            # right_lanept = right_lane_pt_wrt_ego[:2, 3]
+            # right_lanept[0] = right_lanept[0] - abVec.x
+            # right_lanept[1] = right_lanept[0] - abVec.y
+
+            # left_lane_pts_wrt_ego.append([left_lanept[0], left_lanept[1]])
+            # right_lane_pts_wrt_ego.append([right_lanept[0], right_lanept[1]])
+            left_lane_pts_wrt_ego.append([left_lane_pt_wrt_ego[0], left_lane_pt_wrt_ego[1]])
+            right_lane_pts_wrt_ego.append([right_lane_pt_wrt_ego[0], right_lane_pt_wrt_ego[1]])
+            
+        return np.array(left_lane_pts_wrt_ego), np.array(right_lane_pts_wrt_ego)
 
     def generate_global_path(self, num_of_waypoints, dist_between_wpts = 1):
         
         global_path = []
         global_path_wpt_tf = []
         global_path_carla = []
+        global_path_wps = []
         # Getting the waypoint of the ego
         carwaypoint = self.map.get_waypoint(self.ego.get_location())
 
@@ -535,12 +739,14 @@ class CarEnv(gym.Env):
         wpt = carwaypoint
         for _ in range(num_of_waypoints):
             global_path_carla.append(wpt.transform.location)
+            global_path_wps.append(wpt)
             global_path.append([wpt.transform.location.x, wpt.transform.location.y, wpt.transform.rotation.yaw])
             global_path_wpt_tf.append(wpt.transform.get_matrix()) 
             wpt = np.random.choice(wpt.next(dist_between_wpts)) # wpt at every 1m
         self.global_path = np.array(global_path)
         self.global_path_tf = np.array(global_path_wpt_tf)
         self.global_path_carla = global_path_carla
+        self.global_path_wps = global_path_wps
 
     def get_nearest_waypoint_transform(self, location):
         global_path = self.global_path
@@ -562,6 +768,8 @@ class CarEnv(gym.Env):
     
     def get_next_waypoints_in_ego_frame(self, num_wpts=10, dist_between_wpts=1):
         global_path = self.global_path
+
+        global_path_wp = self.global_path_wps
         
         global_path_tf = self.global_path_tf
         
@@ -585,18 +793,20 @@ class CarEnv(gym.Env):
         # print("Nearest- ", nearest_wpt_idx)
 
         next_wpts = []
+        next_gp_wpts = []
         for i in range(num_wpts):
             if nearest_wpt_idx + i >= len(global_path):
                 break
             
             nearest_wpt_tf_in_ego_frame = global_path_relative_tf[nearest_wpt_idx + i]
             coords = nearest_wpt_tf_in_ego_frame[0:3, 3]
+            next_gp_wpts.append(global_path_wp[nearest_wpt_idx + i])
 
             next_wpts.append(coords)
 
         next_wpts = np.array(next_wpts)
         # next_wpts[:, 1] = -next_wpts[:, 1]
-        return np.array(next_wpts)
+        return np.array(next_wpts), next_gp_wpts
 
     def add_traffic(self):
         if self.number_of_vehicles == 0:
@@ -622,6 +832,7 @@ class CarEnv(gym.Env):
                 vehicle.set_autopilot(True)
                 self.vehicles.append(vehicle)
                 # self.traffic_manager.set_desired_speed(vehicle, 3)
+                self.traffic_manager.ignore_lights_percentage(vehicle,100)
                 count -= 1
         self.traffic_manager.global_percentage_speed_difference(80)
     

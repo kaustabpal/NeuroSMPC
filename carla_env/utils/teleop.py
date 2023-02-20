@@ -47,7 +47,7 @@ else:
     import termios
     import tty
 
-BURGER_MAX_LIN_VEL = 5
+BURGER_MAX_LIN_VEL = 10
 BURGER_MAX_ANG_VEL = 30
 
 LIN_VEL_STEP_SIZE = 1
