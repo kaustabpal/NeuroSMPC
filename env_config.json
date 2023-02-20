@@ -11,10 +11,18 @@
         "no_rendering_mode" : false
     },
 
+    "traffic_manager" : {
+        "port" : 8000,
+        "random_device_seed" : 3
+    },
+
     "ego" : {
         "blueprint" : "vehicle.tesla.model3",
         "spawn_type" : "fixed",
         "spawn_point" : [233.28, 86.87, 0.5],
+        "stanley" : {
+            "L" : 1.9
+        },
         "sensors" : [
             {
                 "name" : "lidar",
@@ -53,11 +61,6 @@
         ]
     },
 
-    "traffic_manager" : {
-        "port" : 8000,
-        "random_device_seed" : 3
-    },
-
     "npc" : [
         {
             "blueprint" : "vehicle.tesla.model3",
@@ -79,11 +82,6 @@
             "ignore_signs_percentage" : 100,
             "speed_difference_percentage" : 80.0
         }
-    ],
-
-    "stanley" : {
-        "L" : 1.9
-    }
-
+    ]
 
 }

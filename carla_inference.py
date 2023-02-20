@@ -11,7 +11,7 @@ import time
 import signal
 import os
 
-from DeXBee import DeXBee
+from planners.LocalPlanner import DeXBee
 
 from datetime import datetime
 import pickle
