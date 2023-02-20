@@ -138,11 +138,13 @@ class CarEnv(gym.Env):
         self.lidar_bp.set_attribute('channels', str(16))
         # TODO : fps of sim has been set to 10
         # Set the fps of simulator same as this
-        self.lidar_bp.set_attribute('rotation_frequency', str(20))
+        # self.lidar_bp.set_attribute('rotation_frequency', str(20))
+        self.lidar_bp.set_attribute('rotation_frequency', str(10)) # changed to 10
         self.lidar_bp.set_attribute('range', str(50))
         self.lidar_bp.set_attribute('lower_fov', str(-15))
         self.lidar_bp.set_attribute('upper_fov', str(15))
-        self.lidar_bp.set_attribute('points_per_second', str(300000))
+        # self.lidar_bp.set_attribute('points_per_second', str(300000))
+        self.lidar_bp.set_attribute('points_per_second', str(144000))
         self.lidar_bp.set_attribute('dropoff_general_rate', str(0.0))
 
         lidar_location = carla.Location(0, 0, 2)
@@ -156,11 +158,13 @@ class CarEnv(gym.Env):
         self.semantic_lidar_bp.set_attribute('channels', str(16))
         # TODO : fps of sim has been set to 10
         # Set the fps of simulator same as this
-        self.semantic_lidar_bp.set_attribute('rotation_frequency', str(20))
+        # self.semantic_lidar_bp.set_attribute('rotation_frequency', str(20))
+        self.semantic_lidar_bp.set_attribute('rotation_frequency', str(10)) # changed to 10
         self.semantic_lidar_bp.set_attribute('range', str(50))
         self.semantic_lidar_bp.set_attribute('lower_fov', str(-15))
         self.semantic_lidar_bp.set_attribute('upper_fov', str(15))
-        self.semantic_lidar_bp.set_attribute('points_per_second', str(300000))
+        # self.semantic_lidar_bp.set_attribute('points_per_second', str(300000))
+        self.lidar_bp.set_attribute('points_per_second', str(144000))
         # self.semantic_lidar_bp.set_attribute('dropoff_general_rate', str(0.0))
 
         semantic_lidar_location = carla.Location(0, 0, 2)
