@@ -93,7 +93,7 @@ class CarEnv(gym.Env):
         client = carla.Client('127.0.0.1', 2000)
         client.set_timeout(10.0)
         # client.load_world('Town04')
-        client.load_world('Town05')
+        client.load_world('Town02')
         # client.load_world('Town10HD')
         self.world = client.get_world()
         settings = self.world.get_settings()
@@ -174,7 +174,7 @@ class CarEnv(gym.Env):
 
         ### Traffic Manager
         self.traffic_manager = None
-        self.number_of_vehicles = 200
+        self.number_of_vehicles = 0
         self.number_of_walkers = 0
         self.vehicles = []
         if self.number_of_vehicles > 0:
@@ -353,7 +353,7 @@ class CarEnv(gym.Env):
             process_lidar = True
 
         # Generate a global path
-        self.generate_global_path(num_of_waypoints=1000, dist_between_wpts=1)
+        self.generate_global_path(num_of_waypoints=300, dist_between_wpts=1)
 
         # Add traffic
         self.vehicle_spawn_points = list(self.world.get_map().get_spawn_points())
@@ -607,6 +607,9 @@ class CarEnv(gym.Env):
         obs_pose_wrt_ego = []
         for i in range(len(self.vehicles)):
             #   Obstacle traneformation matrix
+            if not self.vehicles[i].is_alive:
+                continue
+
             vehicle_tf = np.array(self.vehicles[i].get_transform().get_matrix())
             #   Transformation of obs wrt ego
             obs_wrt_ego = np.linalg.pinv(ego_tf) @ vehicle_tf

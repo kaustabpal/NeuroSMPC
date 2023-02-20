@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from carla_env.carla_env_controls import CarEnv
+from carla_env.carla_env_controls_obs import CarEnv
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -22,10 +22,10 @@ import signal
 import time
 
 now = datetime.now()
-dataset_dir = "/home/aditya/deb_data/carla_manual/" + now.strftime("%m-%d-%Y_%H:%M:%S") + "/"
+dataset_dir = "/scratch/parth.shah/carla_manual_2-20-2023/" + now.strftime("%m-%d-%Y_%H:%M:%S") + "/"
 
 
-temp_dir = "/home/aditya/deb_data/temp/"
+temp_dir = "/scratch/parth.shah/temp/"
 
 def handler(signum, frame):
     msg = "Ctrl-c was pressed. Do you want to save? y/n "
@@ -36,7 +36,8 @@ def handler(signum, frame):
         os.makedirs(dataset_dir + "bev", exist_ok=True)
         os.makedirs(dataset_dir + "storm", exist_ok=True)
         print("Saving the current data to ", dataset_dir)
-        os.system('scp -r ' + temp_dir + " " + dataset_dir)
+        os.system('scp -r ' + temp_dir + "bev " + dataset_dir)
+        os.system('scp -r ' + temp_dir + "storm " + dataset_dir)
 
     os.system('rm -rf ' + temp_dir)
 
@@ -50,7 +51,7 @@ def teleop_callbak(data):
     steer = -data.angular.z
     vel = data.linear.x
     
-    print("Steer: ", steer, "Vel: ", vel)
+    # print("Steer: ", steer, "Vel: ", vel)
 
     steer = np.clip(steer / 30, -1, 1) 
 
