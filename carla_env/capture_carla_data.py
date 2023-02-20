@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
-# from carla_env.carla_env_controls import CarEnv
-from carla_env.carla_env_controls_obs import CarEnv
-
+from carla_env.carla_env_controls import CarEnv
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -75,6 +73,8 @@ def run():
     times = []
     while not rospy.is_shutdown():
         print("Loop - ", i)
+
+        print(env.ego.get_location())
 
         # action = [0.3, -0.02]
         global action

@@ -10,6 +10,8 @@ import random
 
 import cv2
 
+from carla import Transform, Location, Rotation
+
 # from agents.navigation.basic_agent import BasicAgent
 # from agents.navigation.behavior_agent import BehaviorAgent
 
@@ -49,10 +51,10 @@ class CarEnv(gym.Env):
         #                    y=86.87185668945312, z=2.684593),
         #     carla.Rotation(pitch=-1.183624, yaw=90, roll=-0.084534)
         # )
-        self.ego_trans_init = carla.Transform(
-            carla.Location(x=-78.316872, y=158.03792, z=0.051953),
-            carla.Rotation(pitch=0.013059, yaw=-90.464806, roll=-0.005676)
-        )
+        # self.ego_trans_init = carla.Transform(
+        #     carla.Location(x=-78.316872, y=158.03792, z=0.051953),
+        #     carla.Rotation(pitch=0.013059, yaw=-90.464806, roll=-0.005676)
+        # )
 
         ##########
         # GYM env
@@ -89,7 +91,7 @@ class CarEnv(gym.Env):
         # Settin Up the World
         client = carla.Client('127.0.0.1', 2000)
         client.set_timeout(10.0)
-        client.load_world('Town04')
+        client.load_world('Town03')
         self.world = client.get_world()
         settings = self.world.get_settings()
         settings.synchronous_mode = True
@@ -120,11 +122,13 @@ class CarEnv(gym.Env):
         self.lidar_bp.set_attribute('channels', str(16))
         # TODO : fps of sim has been set to 10
         # Set the fps of simulator same as this
-        self.lidar_bp.set_attribute('rotation_frequency', str(20))
+        # self.lidar_bp.set_attribute('rotation_frequency', str(20))
+        self.lidar_bp.set_attribute('rotation_frequency', str(10)) # changed to 10
         self.lidar_bp.set_attribute('range', str(50))
         self.lidar_bp.set_attribute('lower_fov', str(-15))
         self.lidar_bp.set_attribute('upper_fov', str(15))
-        self.lidar_bp.set_attribute('points_per_second', str(300000))
+        # self.lidar_bp.set_attribute('points_per_second', str(300000))
+        self.lidar_bp.set_attribute('points_per_second', str(144000))
         self.lidar_bp.set_attribute('dropoff_general_rate', str(0.0))
 
         lidar_location = carla.Location(0, 0, 2)
@@ -138,11 +142,13 @@ class CarEnv(gym.Env):
         self.semantic_lidar_bp.set_attribute('channels', str(16))
         # TODO : fps of sim has been set to 10
         # Set the fps of simulator same as this
-        self.semantic_lidar_bp.set_attribute('rotation_frequency', str(20))
+        # self.semantic_lidar_bp.set_attribute('rotation_frequency', str(20))
+        self.semantic_lidar_bp.set_attribute('rotation_frequency', str(10)) # changed to 10
         self.semantic_lidar_bp.set_attribute('range', str(50))
         self.semantic_lidar_bp.set_attribute('lower_fov', str(-15))
         self.semantic_lidar_bp.set_attribute('upper_fov', str(15))
-        self.semantic_lidar_bp.set_attribute('points_per_second', str(300000))
+        # self.semantic_lidar_bp.set_attribute('points_per_second', str(300000))
+        self.lidar_bp.set_attribute('points_per_second', str(144000))
         # self.semantic_lidar_bp.set_attribute('dropoff_general_rate', str(0.0))
 
         semantic_lidar_location = carla.Location(0, 0, 2)
@@ -301,6 +307,7 @@ class CarEnv(gym.Env):
             self.ego.destroy()
 
         # Spawn Ego
+        self.ego_trans_init = np.random.choice(self.map.get_spawn_points())
         self.ego = self.world.spawn_actor(self.ego_bp, self.ego_trans_init)
         # self.ego.set_autopilot(True)
 
@@ -400,6 +407,19 @@ class CarEnv(gym.Env):
                     ('CosAngle', np.float32), ('ObjIdx', np.uint32), ('ObjTag', np.uint32)]
                     ))
         self.semantic_lidar_pcd = np.array([data['x'], data['y'], data['z'], data['CosAngle'], data['ObjIdx'], data['ObjTag']]).T
+
+        car_pts_mask = self.semantic_lidar_pcd[:, 5] == 10
+
+        self.car_pts = self.semantic_lidar_pcd[car_pts_mask]
+        self.non_car_pts = self.semantic_lidar_pcd[~car_pts_mask]
+        
+        self.non_car_noise = np.random.normal(0, 0.3, self.non_car_pts[:, :3].shape)
+        self.car_noise = np.random.normal(0, 0.1, self.car_pts[:, :3].shape)
+
+        self.non_car_pts[:, :3] += self.non_car_noise
+        self.car_pts[:, :3] += self.car_noise
+
+        self.semantic_lidar_pcd = np.concatenate([self.non_car_pts, self.car_pts], axis=0)
 
         # Generate BEV
         self.bev, self.obstacle_bev, self.next_g_path = self.generate_bev((256, 256), range = 15, z_max=1)
@@ -579,6 +599,9 @@ class CarEnv(gym.Env):
         return np.array(next_wpts)
 
     def add_traffic(self):
+        if self.number_of_vehicles == 0:
+            return
+
         if self.traffic_manager is None:
             self.traffic_manager = self.world.get_trafficmanager(8000)
             self.traffic_manager.set_global_distance_to_leading_vehicle(1.0)
