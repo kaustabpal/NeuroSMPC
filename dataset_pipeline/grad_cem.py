@@ -15,7 +15,7 @@ from torch import optim
 np.set_printoptions(suppress=True)
 
 class GradCEM:
-    def __init__(self, c_state, vl, wl, obstacles, num_particles = 500, device='cpu'):
+    def __init__(self, c_state, vl, wl, obstacles, num_particles = 1000, device='cpu'):
         # agent info
         self.device = "cpu" # torch.device("cuda" if torch.cuda.is_available() else "cpu") # "cpu"
         self.radius = 1.80
@@ -177,7 +177,7 @@ class GradCEM:
         # print(act_seq.shape, self.controls_N.shape)
         # return act_seq
         
-    def rollout(self, s_o = 10, s_s = 10, s_c=1, s_m = 1):
+    def rollout(self, s_o = 1, s_s = 1, s_c = 0.1, s_m = 0):
         # print(self.num_particles)
         # print(self.controls_N.shape[0])
         t_r = time.time()
@@ -296,7 +296,7 @@ class GradCEM:
         self.cov_action = self.init_cov_action
         self.scale_tril = torch.sqrt(self.cov_action)
         self.full_scale_tril = torch.diag(self.scale_tril)
-        for i in range(10):
+        for i in range(1):
             # print(i)
             # self.scale_tril = torch.sqrt(self.cov_action)
             # self.full_scale_tril = torch.diag(self.scale_tril)

@@ -19,7 +19,7 @@ torch.manual_seed(42)
 
 @dataclass
 class Args:
-    occ_map_dir: str = '/scratch/kaustab.pal/iros/dataset/occ_map/' # '/scratch/kaustab.pal/iros_23/dataset/' #'../iros_23/dataset/' #'/scratch/kaustab.pal/iros_23/dataset/' # 'data/dataset_beta/'
+    occ_map_dir: str = '/Users/kaustabpal/work/sparse_data/occ_map/' #'/scratch/kaustab.pal/iros/dataset/occ_map/' # '/scratch/kaustab.pal/iros_23/dataset/' #'../iros_23/dataset/' #'/scratch/kaustab.pal/iros_23/dataset/' # 'data/dataset_beta/'
     mean_dir: str = '/Users/kaustabpal/work/carla_latest/mean_controls/' #'/scratch/kaustab.pal/iros_23/weights/' #'../iros_23/weights/' #'/scratch/kaustab.pal/iros_23/weights/' 
     plot_im_dir: str = '/Users/kaustabpal/work/carla_latest/plot_im/' #'/scratch/kaustab.pal/iros_23/loss/'  #'../iros_23/loss/' #'/scratch/kaustab.pal/iros_23/loss/' 
     # val_split: float = 0.3
@@ -91,7 +91,7 @@ def run():
         sampler1.mean_action = torch.as_tensor(mean_controls1)
         sampler1.c_state = torch.tensor([0,0,np.deg2rad(90)])
         sampler1.infer_traj()
-        print("Sampler1 time:", time.time()-t1)
+        print("MPPI time:", time.time()-t1)
         
         t2 = time.time()
         sampler2 = GradCEM(torch.tensor([0,0,np.deg2rad(ego_theta)], device = device), 4, 0, obstacles=obs_pos_frenet)
@@ -104,7 +104,7 @@ def run():
         sampler2.mean_action = torch.as_tensor(mean_controls)
         sampler2.c_state = torch.tensor([0,0,np.deg2rad(90)])
         sampler2.infer_traj()
-        print("Sampler2 time:", time.time()-t2)
+        print("GradCEM time:", time.time()-t2)
         # np.save(mean_save_filename,sampler.mean_action)
         #quit()
         ## plot
@@ -119,16 +119,16 @@ def run():
         plt.plot(sampler1.traj_N[-2,:,0], sampler1.traj_N[-2,:,1], 'r', label = "mppi")
         plt.plot(sampler2.traj_N[-2,:,0].detach().cpu(), sampler2.traj_N[-2,:,1].detach().cpu(), 'g', label = "grad-cem")
         # plt.plot(sampler.top_trajs[0,:,0], sampler.top_trajs[0,:,1], 'blue')
-        print("Total time: ", time.time()-t_1)
+        # print("Total time: ", time.time()-t_1)
         plt.xlim([-15,15])
         plt.ylim([-15,15])
         plt.title("Ego velocity: "+str(round(ego_speed,2)))
         plt.legend(loc="upper left")
         # print(sampler.top_trajs[0,:,:2])
         # plt.savefig(plt_save_file_name)
-        #plt.show()
+        plt.show()
         plt.clf()
-        #quit()
+        # quit()
 
 
 
