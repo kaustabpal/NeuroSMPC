@@ -52,7 +52,7 @@ class Goal_Sampler:
         self.ndims = self.n_knots*self.d_action
         self.bspline_degree = 3
         self.num_particles = int(max(20,num_particles)) #00
-        self.top_K = int(0.05*self.num_particles) # Number of top samples
+        self.top_K = int(0.02*self.num_particles) # Number of top samples
         
         self.null_act_frac = 0.01
         self.num_null_particles = round(int(self.null_act_frac * self.num_particles * 1.0))
@@ -99,16 +99,6 @@ class Goal_Sampler:
         self.free_ball_radius = self.max_free_ball_radius*torch.ones(self.horizon+1,1)
 
         self.device = "cpu" #torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        # print(self.device)
-        # self.curr_state_N = np.zeros((self.N,1,3))
-        # self.V_N_T = np.zeros((self.N, self.horizon))
-        # self.W_N_T = np.zeros((self.N, self.horizon))
-
-    # def initialize_mu(self): # tensor contain initialized values'''
-    #      self.MU = 0*torch.ones((2,self.horizon)) # 2 dim Mu for vel and Angular velocity
-    
-    # def initialize_sig(self):
-    #     self.SIG = 0.7*torch.ones((2,self.horizon))
     
     def bspline(self, c_arr, t_arr=None, n=30, degree=3):
         sample_device = c_arr.device
@@ -184,7 +174,7 @@ class Goal_Sampler:
         state = state + a@controls.float()*self.dt
         return state
     
-    def rollout(self, s_o = 10, s_s = 10, s_c=1, s_m = 1):
+    def rollout(self, s_o = 1, s_s = 1, s_c=0.1, s_m = 0):
         # print(self.num_particles)
         # print(self.controls_N.shape[0])
         t_r = time.time()
@@ -315,7 +305,7 @@ class Goal_Sampler:
         self.cov_action = self.init_cov_action
         # self.scale_tril = torch.sqrt(self.cov_action)
         # self.full_scale_tril = torch.diag(self.scale_tril)
-        for i in range(10):
+        for i in range(1):
             self.scale_tril = torch.sqrt(self.cov_action)
             self.full_scale_tril = torch.diag(self.scale_tril)
             t1 = time.time()

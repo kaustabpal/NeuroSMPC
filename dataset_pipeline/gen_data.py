@@ -18,9 +18,9 @@ torch.manual_seed(42)
 
 @dataclass
 class Args:
-    occ_map_dir: str = '/scratch/kaustab.pal/iros/dataset/occ_map/' 
-    mean_dir: str = '/scratch/kaustab.pal/iros/dataset/mean_controls/'  
-    plot_im_dir: str = '/scratch/kaustab.pal/iros/dataset/plot_im/' 
+    occ_map_dir: str = '/Users/kaustabpal/work/sparse_data/occ_map/' # '/scratch/kaustab.pal/iros/dataset/occ_map/' 
+    mean_dir: str = '/Users/kaustabpal/work/sparse_data/mean_controls/' # '/scratch/kaustab.pal/iros/dataset/mean_controls/'  
+    plot_im_dir: str = '/Users/kaustabpal/work/sparse_data/plot_im/' # '/scratch/kaustab.pal/iros/dataset/plot_im/' 
     # val_split: float = 0.3
     # num_epochs: int = 500
     # seed: int = 12321
@@ -107,7 +107,7 @@ def run():
         plt.plot(obs_pos[:,0], obs_pos[:,1], 'k.')
         plt.scatter(obs_pos_frenet[:,0], obs_pos_frenet[:,1], color='orange')
 
-        plt.plot(sampler.traj_N[:,:,0], sampler.traj_N[:,:,1], '.r', alpha=0.05)
+        plt.plot(sampler.traj_N[:,:,0], sampler.traj_N[:,:,1], '.r', alpha=0.01)
         plt.plot(sampler.traj_N[-2,:,0], sampler.traj_N[-2,:,1], 'g')
         # plt.plot(sampler.top_trajs[0,:,0], sampler.top_trajs[0,:,1], 'blue')
         print("Total time: ", time.time()-t_1)
@@ -116,9 +116,9 @@ def run():
         plt.title("Ego velocity: "+str(round(ego_speed,2)))
         # print(sampler.top_trajs[0,:,:2])
         plt.savefig(plt_save_file_name)
-        #plt.show()
+        plt.show()
         plt.clf()
-        #quit()
+        # quit()
 
 
 
