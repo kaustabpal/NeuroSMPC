@@ -16,7 +16,7 @@ import os
 class DeXBee:
     def __init__(self) -> None:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.device = "cpu"
+        # self.device = "cpu"
 
         self.dtype = torch.float32
         np.set_printoptions(suppress=True)
@@ -88,7 +88,7 @@ class DeXBee:
         with torch.no_grad():
             mean_action = self.model(occupancy_map.unsqueeze(0).to(self.device)).reshape(30,2) # NN output reshaped        
         toc = time.time()
-        # print("Time taken for NN : ", toc-tic)
+        print("Time taken for NN : ", toc-tic)
         
         tic = time.time()
         mean_action_cpu = mean_action.detach().cpu()
@@ -102,7 +102,7 @@ class DeXBee:
         sampler.mean_action = mean_action_cpu
         sampler.infer_traj()
         toc = time.time()
-        # print("Time taken for sampling : ", toc-tic)
+        print("Time taken for sampling : ", toc-tic)
 
         best_controls = sampler.top_controls[0,:,:] # contains the best v and w
         best_traj = sampler.top_trajs[0,:,:] # contains the best x, y and theta
@@ -112,7 +112,7 @@ class DeXBee:
         
         print("Plotting")
         if self.visualize or self.save:
-            self.plotter(obstacle_positions, g_path, sampler, 0.5, current_speed)
+            self.plotter(obstacle_positions, g_path, sampler, 2.5, current_speed)
         print("Done plotting")
         return best_traj, best_controls
     
@@ -151,3 +151,6 @@ class DeXBee:
         if self.visualize:
             plt.draw()
             plt.pause(0.001)
+
+    def save_plot(self, filename):
+        plt.savefig(filename)
