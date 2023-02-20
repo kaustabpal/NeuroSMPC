@@ -315,7 +315,7 @@ class Goal_Sampler:
         self.cov_action = self.init_cov_action
         # self.scale_tril = torch.sqrt(self.cov_action)
         # self.full_scale_tril = torch.diag(self.scale_tril)
-        for i in range(10):
+        for i in range(1):
             self.scale_tril = torch.sqrt(self.cov_action)
             self.full_scale_tril = torch.diag(self.scale_tril)
             t1 = time.time()

@@ -17,7 +17,7 @@ from dataset_pipeline.frenet_transformations import global_traj, global_to_frene
 import os
 
 class LocalPlanner:
-    def __init__(self, type="NuroMPPI") -> None:
+    def __init__(self, planner="NuroMPPI") -> None:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # self.device = "cpu"
 
@@ -35,7 +35,7 @@ class LocalPlanner:
 
         print("Device : ", self.device)
 
-        self.planner_type = type
+        self.planner_type = planner
 
         self.model = None
         self.sampler = None
@@ -53,8 +53,8 @@ class LocalPlanner:
         # elif self.planner_type == "GradCEM":
         #     self.sampler = GradCEM()
 
-        self.visualize = True
-        self.save = False
+        self.visualize = False
+        self.save = True
 
         if self.visualize:
             plt.ion()
@@ -67,6 +67,16 @@ class LocalPlanner:
                     new_x, new_y = rotate([256/2,256/2],[k,j],np.deg2rad(180))
                     obs_pos.append([new_x*30/256,new_y*30/256])
         return obs_pos
+
+    def generate_path(self, obstacle_array, global_path, current_speed):
+        print(self.planner_type)
+        if self.planner_type == "NuroMPPI":
+            return self.generate_path_nuromppi(obstacle_array, global_path, current_speed)
+        elif self.planner_type == "MPPI":
+            return self.generate_path_mppi(obstacle_array, global_path, current_speed)
+        elif self.planner_type == "GradCEM":
+            return self.generate_path_gcem(obstacle_array, global_path, current_speed)
+
 
     def generate_path_nuromppi(self, obstacle_array, global_path, current_speed):
         ego_speed = current_speed
@@ -129,7 +139,7 @@ class LocalPlanner:
         print("Done plotting")
         return best_traj, best_controls
     
-    def generate_path_mmpi(self, obstacle_array, global_path, current_speed):
+    def generate_path_mppi(self, obstacle_array, global_path, current_speed):
         ego_speed = current_speed
 
         # Process global path
@@ -172,6 +182,14 @@ class LocalPlanner:
         best_controls = sampler.top_controls[0,:,:] # contains the best v and w
         best_traj = sampler.top_trajs[0,:,:] # contains the best x, y and theta
 
+        best_traj = best_traj.detach().cpu().numpy()
+        best_controls = best_controls.detach().cpu().numpy()
+        
+        print("Plotting")
+        if self.visualize or self.save:
+            self.plotter(obstacle_positions, global_path, sampler, 2.5, current_speed)
+        print("Done plotting")
+
         return best_traj, best_controls
 
     def generate_path_gcem(self, obstacle_array, global_path, current_speed):
@@ -212,10 +230,21 @@ class LocalPlanner:
         toc_ = time.time()
         print("Time taken for infer_traj : ", toc_-tic_)
         toc = time.time()
-        print("Time taken for MPPI : ", toc-tic)
+        print("Time taken for GradCEN : ", toc-tic)
 
-        best_controls = sampler.top_controls[0,:,:] # contains the best v and w
-        best_traj = sampler.top_trajs[0,:,:] # contains the best x, y and theta
+        # best_controls = sampler.top_controls[0,:,:] # contains the best v and w
+        # best_traj = sampler.top_trajs[0,:,:] # contains the best x, y and theta
+
+        best_controls = sampler.controls_N[-2,:,:] # contains the best v and w
+        best_traj = sampler.traj_N[-2,:,:] # contains the best x, y and theta
+
+        best_traj = best_traj.detach().cpu().numpy()
+        best_controls = best_controls.detach().cpu().numpy()
+
+        print("Plotting")
+        if self.visualize or self.save:
+            self.plotter(obstacle_positions, global_path, sampler, 2.5, current_speed)
+        print("Done plotting")
         return best_traj, best_controls
 
     def plotter(self, obstacle_positions, global_path, sampler, ego_radius, current_speed, filename = None):
@@ -234,13 +263,15 @@ class LocalPlanner:
         plt.plot(obstacle_positions[:,0],obstacle_positions[:,1],'k.')
 
         # All trajectories
-        plt.plot(sampler.traj_N[:,:,0], sampler.traj_N[:,:,1], '.b', markersize=1, alpha=0.04)
+        traj_N = sampler.traj_N.detach().cpu().numpy()
+        plt.plot(traj_N[:,:,0], traj_N[:,:,1], '.b', markersize=1, alpha=0.04)
 
         # Predicted trajectory
-        plt.plot(sampler.traj_N[-2,:,0], sampler.traj_N[-2,:,1], 'red', markersize=3, label = "Predicted")
+        plt.plot(traj_N[-2,:,0], traj_N[-2,:,1], 'red', markersize=3, label = "Predicted")
 
         # Best trajectory
-        plt.plot(sampler.top_trajs[0,:,0], sampler.top_trajs[0,:,1], 'lime', markersize=2, label = "best traj")
+        top_trajs = sampler.top_trajs.detach().cpu().numpy()
+        plt.plot(top_trajs[0,:,0], top_trajs[0,:,1], 'lime', markersize=2, label = "best traj")
         
         # Set Limits
         plt.ylim(-15,15)

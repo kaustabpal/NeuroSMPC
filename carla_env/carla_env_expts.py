@@ -435,7 +435,10 @@ class CarEnv():
         self.traffic_manager.set_synchronous_mode(False)
 
         npc_config = self.config["npc"]
-
+        
+        ego_tf = self.ego_trans_init
+        ego_location = ego_tf.location
+                
         self.npcs = []
         for i in range(len(npc_config)):
             npc_conf = npc_config[i]
@@ -454,9 +457,6 @@ class CarEnv():
 
             elif npc_conf["spawn_type"] == "relative":
                 spawn_point = npc_conf["spawn_point"]
-                
-                ego_tf = self.ego_trans_init
-                ego_location = ego_tf.location
                 
                 spawn_point = [spawn_point[0] + ego_location.x, spawn_point[1] + ego_location.y, spawn_point[2] + ego_location.z]
 

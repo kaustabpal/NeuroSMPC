@@ -11,7 +11,7 @@ import time
 import signal
 import os
 
-from planners.LocalPlanner import DeXBee
+from planners.LocalPlanner import LocalPlanner
 
 from datetime import datetime
 import pickle
@@ -47,7 +47,7 @@ signal.signal(signal.SIGINT, handler)
 
 def run():
     # Setting up planner
-    planner = DeXBee()
+    planner = LocalPlanner(planner="MPPI")
     
     os.makedirs(temp_dir + "bev", exist_ok=True)
     os.makedirs(temp_dir + "storm", exist_ok=True)
@@ -59,6 +59,14 @@ def run():
     env = CarEnv('env_config.json')
     print("Starting loop")
     obs = env.reset()
+    
+    x = input("Press s to start")
+    if x == 's':
+        print("Starting the simulation")
+    else:
+        print("Exiting")
+        exit(1)
+
     i = 0
     while True:
         obstacle_array = env.obstacle_bev
@@ -80,6 +88,7 @@ def run():
 
         target_speed = best_controls[0,0]
 
+        print("Target Speed: ", target_speed)
         obs, reward, done, info = env.step(best_path, target_speed=target_speed)
         env.render()
 
