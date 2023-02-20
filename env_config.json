@@ -1,7 +1,7 @@
 {
     "save_path" : "/data",
     
-    "carla": {
+    "carla_client": {
         "ip" : "127.0.0.1",
         "port" : 2000,
         "timeout" : 10,
@@ -11,7 +11,7 @@
         "no_rendering_mode" : false
     },
 
-    "ego_vehicle" : {
+    "ego" : {
         "blueprint" : "vehicle.tesla.model3",
         "spawn_type" : "fixed",
         "spawn_point" : [233.28, 86.87, 0.5],
@@ -55,14 +55,14 @@
 
     "traffic_manager" : {
         "port" : 8000,
-        "random_dvice_seed" : 3
+        "random_device_seed" : 3
     },
 
     "npc" : [
         {
             "blueprint" : "vehicle.tesla.model3",
-            "spawn_type" : "relative",
-            "spawn_point" : [5.0, 2.0, 0.5],
+            "spawn_type" : "random",
+            "spawn_point" : [0.0, 20.0, 0.5],
             "desired_speed" : 5.0,
             "distance_to_leading_vehicle" : 5.0,
             "ignore_lights_percentage" : 100,
@@ -71,9 +71,10 @@
         }, 
         {
             "blueprint" : "vehicle.tesla.model3",
-            "spawn_type" : "absolute",
-            "spawn_point" : [10.0, 2.0, 0.5],
-            "desired_speed" : 6.0,
+            "spawn_type" : "random",
+            "spawn_point" : [0.0, 10.0, 0.5],
+            "desired_speed" : 5.0,
+            "distance_to_leading_vehicle" : 5.0,
             "ignore_lights_percentage" : 100,
             "ignore_signs_percentage" : 100,
             "speed_difference_percentage" : 80.0

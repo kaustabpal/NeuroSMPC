@@ -54,16 +54,16 @@ def run():
     os.makedirs(temp_dir + "dexbee", exist_ok=True)
 
     # Setting up Carla
-    print("setting up Carla-Gym")
+    print("setting up Carla Environment")
+    print("-----------------------------")
     env = CarEnv('env_config.json')
     print("Starting loop")
     obs = env.reset()
-    
     i = 0
     while True:
         obstacle_array = env.obstacle_bev
         global_path = env.next_g_path
-        current_speed = env.speed_ego
+        current_speed = env.ego_speed
         bev = env.bev
         
         tic = time.time()
@@ -103,7 +103,7 @@ def run():
         bev = env.bev
         obstable_array = env.obstacle_bev
         g_path = env.next_g_path
-        speed = env.speed_ego
+        speed = env.ego_speed
         left_lane = env.left_lane_coords
         right_lane = env.right_lane_coords
         dyn_obs = env.dyn_obs_poses

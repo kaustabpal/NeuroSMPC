@@ -1,5 +1,3 @@
-import gym
-from gym import spaces
 import carla
 import numpy as np
 from carla_env.utils.transforms import se3_to_components
@@ -28,6 +26,8 @@ class CarEnv():
     def __init__(self, config_file):
         super(CarEnv, self).__init__()
 
+        print("Initializing Carla Environment")
+
         # Reading Config File
         self.config = None 
         with open(config_file) as f:
@@ -49,13 +49,15 @@ class CarEnv():
         # Carla
         ##########
 
+        print("--carla client")
         # Settin Up the World
         carla_config = self.config["carla_client"]
-        client = carla.Client(carla_config["ip"], carla_config["port"])
-        client.set_timeout(carla_config["timeout"])
-        client.load_world(carla_config["world"])
+        self.client = carla.Client(carla_config["ip"], carla_config["port"])
+        self.client.set_timeout(carla_config["timeout"])
+        self.client.load_world(carla_config["world"])
         
-        self.world = client.get_world()
+        print("--world")
+        self.world = self.client.get_world()
         settings = self.world.get_settings()
         settings.synchronous_mode = carla_config["synchronous_mode"]
         settings.fixed_delta_seconds = 1 / carla_config["fps"]  # FPS = 1/0.1 = 10
@@ -63,15 +65,16 @@ class CarEnv():
         self.world.apply_settings(settings)
         self.map = self.world.get_map()
 
+        print("--ego setup")
         ### Ego-Vehicle
         # Vehicle Config
         ego_config = self.config["ego"]
 
         # Vehicle Transforms
         self.ego_trans_init = carla.Transform()
-        if ego_config["spwan_type"] == "random":
+        if ego_config["spawn_type"] == "random":
             self.ego_trans_init = np.random.choice(self.map.get_spawn_points())
-        elif ego_config["spwan_type"] == "fixed":
+        elif ego_config["spawn_type"] == "fixed":
             self.ego_trans_init.location = carla.Location(x = ego_config["spawn_point"][0],
                                                 y = ego_config["spawn_point"][1],
                                                 z = ego_config["spawn_point"][2])
@@ -79,6 +82,7 @@ class CarEnv():
             self.ego_trans_init = wpt.transform
             self.ego_trans_init.location.z = ego_config["spawn_point"][2]
         
+
         self.tf_matrix = np.array(self.ego_trans_init.get_matrix())
         self.yaw_init = self.ego_trans_init.rotation.yaw
 
@@ -87,6 +91,7 @@ class CarEnv():
         self.ego_bp.set_attribute('role_name', 'ego')
         self.ego_bp.set_attribute('color', '255,0,0')
 
+        print("--sensors setup")
         # Vehicle Sensors
         self._setup_sensors()
 
@@ -96,6 +101,7 @@ class CarEnv():
         self.next_g_path = None
 
         # Stanley Controller
+        print("--stanley setup")
         self.stanley = Stanley()
 
         self.left_lane_coords = None
@@ -109,13 +115,9 @@ class CarEnv():
         self.global_path_wps = None
 
         ### Traffic Manager
+        print("--traffic manager setup")
         self.traffic_manager = None
-        
-        traffic_manager_config = self.config["traffic_manager"]
-        self.traffic_manager_port = traffic_manager_config["port"]
-        
-        self.traffic_manager = self.client.get_trafficmanager(self.traffic_manager_port)
-        self.traffic_manager.set_random_device_seed(traffic_manager_config["random_device_seed"])
+        self._setup_traffic_manager()        
 
         atexit.register(self.close)
 
@@ -129,6 +131,9 @@ class CarEnv():
 
         # Generate BEV
         self.generate_data((256, 256), sensing_range = 15, z_max=1)
+
+        vel_ego = self.ego.get_velocity()
+        self.ego_speed = np.linalg.norm(np.array([vel_ego.x, vel_ego.y]))
 
         observation["bev"] = self.bev
         observation["obstacle_bev"] = self.obstacle_bev
@@ -158,7 +163,7 @@ class CarEnv():
             print(e)
             print("Trajectory : ", trajectory)
             print("Velocity : ", np.round(target_speed,2))
-            exit()
+            # exit()
 
         action, ret_val = self.stanley.get_controls()
 
@@ -180,31 +185,39 @@ class CarEnv():
         obs = self._next_observation()
         done = False
 
-        y_offset = obs['offset'][0]
+        y_offset, yaw_offset = self.get_offset()
         if np.abs(y_offset) > 1.5:
             print('!!!!!!OUT OF LANE!!!!!!!!!')
 
-        if len(self.collision_hist)>0: 
-            done = True
+        done = self.check_for_collision()
 
         reward, state = None, None
         return obs, reward, done, state
 
     def reset(self):
         # Reset the state of the environment to an initial state
+        print("Resetting the environment")
         self.frame = -1
 
         time.sleep(1.5)
-
+        
+        print("--spawn ego")
         # Spawn Ego
         self._spawn_ego()
 
+        print("--attach sensors")
         # attach sensors
         self._attach_sensors()
 
+        if self.traffic_manager is None:
+            print("--setup traffic manager")
+            self._setup_traffic_manager()
+
+        print("--spawn npcs")
         # Spawn NPCs
         self._spawn_npcs()
 
+        print("--setup dummy")
         # Attach Dummy Camera
         if self.dummy is not None:
             self.dummy.destroy()
@@ -215,6 +228,7 @@ class CarEnv():
             dummy_bp, dummy_transform, attach_to=self.ego, attachment_type=carla.AttachmentType.SpringArm)
         self.dummy.listen(lambda image: self.dummy_callback(image))
 
+        print("--wait for sensors")
         # Wait for the sensors to be ready
         global process_lidar
         process_lidar = False
@@ -224,10 +238,11 @@ class CarEnv():
             spectator.set_transform(self.dummy.get_transform())
         process_lidar = True
 
+        print("--generate global path")
         # Generate a global path
         self.generate_global_path(num_of_waypoints=1000, dist_between_wpts=1)
 
-        print("Waiting for environment to be ready...")
+        print("--Waiting for environment to be ready...")
         for i in range(10):
             self.world.tick()
 
@@ -237,20 +252,21 @@ class CarEnv():
         pass
 
     def close(self):
-        things_to_destroy = [self.dummy] + self.sensors.values() + [self.ego] + self.npcs
+        print("Destroying everything")
+        things_to_destroy = [self.dummy] + list(self.sensors.values()) + [self.ego] + self.npcs
         
         i = 0
         for thing in things_to_destroy:
             try:
                 thing.destroy()
             except Exception as e:
-                print("Thing number - ", i)
+                print("T--hing number - ", i)
                 print(e)
             i += 1
 
     def _setup_sensors(self):
         # sensors
-        sensors_config = self.config["sensors"]
+        sensors_config = self.config["ego"]["sensors"]
         
         self.sensors = {}
         self.all_sensor_bp = {}
@@ -320,6 +336,8 @@ class CarEnv():
             self.ego_trans_init = np.random.choice(self.map.get_spawn_points())
         self.ego = self.world.spawn_actor(self.ego_bp, self.ego_trans_init)
         
+        print("----Ego spawned at: ", self.ego_trans_init.location)
+
         self.ego.set_autopilot(False)
 
     def _destroy_all_sensors(self):
@@ -404,20 +422,27 @@ class CarEnv():
     def dummy_callback(self, data):
         pass
 
+
+    def _setup_traffic_manager(self):
+        traffic_manager_config = self.config["traffic_manager"]
+        self.traffic_manager_port = traffic_manager_config["port"]
+        
+        self.traffic_manager = self.client.get_trafficmanager(self.traffic_manager_port)
+        self.traffic_manager.set_random_device_seed(traffic_manager_config["random_device_seed"])
+
+
     def _spawn_npcs(self):
         self.traffic_manager.set_synchronous_mode(False)
 
         npc_config = self.config["npc"]
 
         self.npcs = []
-        i = 0
         for i in range(len(npc_config)):
             npc_conf = npc_config[i]
 
             if npc_conf["spawn_type"] == "random":
-                npc_tf = random.choice(self.vehicle_spawn_points)
+                npc_tf = random.choice(self.map.get_spawn_points())
                 spawn_point = [npc_tf.location.x, npc_tf.location.y, npc_tf.location.z]
-
             elif npc_conf["spawn_type"] == "fixed":
                 spawn_point = npc_conf["spawn_point"]
                 npc_tf = carla.Transform()
@@ -430,7 +455,7 @@ class CarEnv():
             elif npc_conf["spawn_type"] == "relative":
                 spawn_point = npc_conf["spawn_point"]
                 
-                ego_tf = self.ego.get_transform()
+                ego_tf = self.ego_trans_init
                 ego_location = ego_tf.location
                 
                 spawn_point = [spawn_point[0] + ego_location.x, spawn_point[1] + ego_location.y, spawn_point[2] + ego_location.z]
@@ -441,24 +466,23 @@ class CarEnv():
                 wpt = self.map.get_waypoint(npc_tf.location, project_to_road = True)
                 npc_tf = wpt.transform
                 npc_tf.location.z = spawn_point[2]
-
-            # Spawn NPC
-            
+ 
             number_of_tries = 10
             npc = None 
-            while npc is not None:
-                npc = self.world.try_spawn_actor(npc_conf["blueprint"], npc_tf)
+            while npc is None:
+                npc_bp = self.world.get_blueprint_library().find(npc_conf["blueprint"])
+                npc = self.world.spawn_actor(npc_bp, npc_tf)
 
-                if (npc is not None) and number_of_tries > 0:
+                if (npc is None) and number_of_tries > 0:
                     number_of_tries -= 1
                     continue
                 elif npc is None:
-                    print("Failed to spawn NPC - ", i, " - ", npc_conf["blueprint"], " - at ", spawn_point)
+                    print("----Failed to spawn NPC - ", i, " - ", npc_conf["blueprint"], " - at ", spawn_point)
                     break
-
+                print("----Spawned NPC - ", i, " - ", npc_conf["blueprint"], " - at ", spawn_point)
                 npc.set_autopilot(True)
                 
-                self.traffic_manager.set_distance_to_leading_vehicle(npc, npc_conf["distance_to_leading_vehicle"])
+                self.traffic_manager.distance_to_leading_vehicle(npc, npc_conf["distance_to_leading_vehicle"])
                 self.traffic_manager.ignore_lights_percentage(npc, npc_conf["ignore_lights_percentage"])
                 self.traffic_manager.ignore_signs_percentage(npc, npc_conf["ignore_signs_percentage"])
                 
@@ -466,6 +490,8 @@ class CarEnv():
                 self.traffic_manager.vehicle_percentage_speed_difference(npc, npc_conf["speed_difference_percentage"])
 
                 self.npcs.append(npc)
+        self.traffic_manager.set_synchronous_mode(True)
+
 
     def generate_data(self, img_size, sensing_range, z_max):
         assert img_size[0] == img_size[1], "BEV should be square"
@@ -627,6 +653,40 @@ class CarEnv():
         self.right_lane_coords = np.array(right_lane_pt_in_image_scale)
         self.dyn_obs_poses = np.array(dyn_obs_poses)
     
+    def get_offset(self):
+        ego_tf = np.array(self.ego.get_transform().get_matrix())
+        # print('Ego Transform: ', self.ego.get_transform())
+        ego_tf_odom = np.linalg.pinv(self.tf_matrix) @ ego_tf
+        ego_x, ego_y, ego_z, ego_R, ego_P, ego_Y = se3_to_components(
+            ego_tf_odom)
+
+        nearest_wpt_tf = self.get_nearest_waypoint_transform(self.ego.get_location())
+
+        waypoint_bl = np.linalg.pinv(ego_tf) @ nearest_wpt_tf.get_matrix()
+        wx, wy, wz, wR, wP, wYaw = se3_to_components(waypoint_bl)
+        
+        ego_y = -ego_y
+        wy = -wy
+        wYaw = -wYaw
+        
+        return wy, wYaw
+
+    def check_for_collision(self):
+        collision_sensors = []
+        for s_conf in self.config["ego"]["sensors"]:
+            if s_conf["type"] == "sensor.other.collision":
+                collision_sensors.append(s_conf["name"])
+        
+        collision = False
+        collided_sensors = []
+        for c_s in collision_sensors:          
+            collision_hist = self.sensor_data[c_s]
+            if len(collision_hist)>0: 
+                collision = collision or True
+                collided_sensors.append(c_s)
+            
+        return collision, collided_sensors
+        
     def get_npc_poses(self, obs_range):
         ego_tf = np.array(self.ego.get_transform().get_matrix())
         
@@ -649,9 +709,9 @@ class CarEnv():
                 rel_yaw = rel_yaw + 360.0
             rel_yaw = rel_yaw + 90.0
 
-            v = self.vehicles[i].get_velocity()
+            v = self.npcs[i].get_velocity()
             obs_v = ((v.x)**2 + (v.y)**2)**0.5
-            obs_w = self.vehicles[i].get_angular_velocity().z
+            obs_w = self.npcs[i].get_angular_velocity().z
 
             #   If obstacle distance less thatn range(of bev), store pose
             if (obs_wrt_ego[0, 3]**2 + obs_wrt_ego[1, 3]**2)**0.5 < obs_range:
