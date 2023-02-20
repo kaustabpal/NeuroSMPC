@@ -307,6 +307,7 @@ class CarEnv(gym.Env):
             self.ego.destroy()
 
         # Spawn Ego
+        self.ego_trans_init = np.random.choice(self.map.get_spawn_points())
         self.ego = self.world.spawn_actor(self.ego_bp, self.ego_trans_init)
         # self.ego.set_autopilot(True)
 
