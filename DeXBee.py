@@ -25,7 +25,7 @@ class DeXBee:
 
         # Args
         self.seed = 12321
-        self.weights_dir = "/home/aditya/Documents/dexbee_car/model_weights/deb/"
+        self.weights_dir = "./data/"
         self.exp_id = "exp1"
 
         # Set seed
@@ -41,7 +41,7 @@ class DeXBee:
 
         print("Device : ", self.device)
 
-        self.visualize = False
+        self.visualize = True
         self.save = True
 
         if self.visualize or self.save:

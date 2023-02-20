@@ -55,7 +55,7 @@ class LocalPlanner:
 
         self.model = MLP()
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.model_path = "/home/aditya/Documents/dexbee_car/model_weights/road-net/mlp_model.state_dict"
+        self.model_path = "/car/road-net/mlp_model.state_dict"
         self.model.load_state_dict(torch.load(self.model_path, map_location=torch.device(self.device)))
         self.model.to(self.device)
 
@@ -73,7 +73,7 @@ class LocalPlanner:
         self.odom_ts = None
 
         self.save_data = True
-        self.save_dir = "/home/aditya/Documents/dexbee_car/data/" + datetime.now().strftime("%m-%d-%Y_%H:%M:%S") + "/"
+        self.save_dir = "./data/real_inference/" + datetime.now().strftime("%m-%d-%Y_%H:%M:%S") + "/"
         if self.save_data:
             os.makedirs(self.save_dir + "storm", exist_ok=True)
             os.makedirs(self.save_dir + "bev", exist_ok=True)
