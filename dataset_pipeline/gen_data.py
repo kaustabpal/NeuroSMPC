@@ -20,7 +20,7 @@ torch.manual_seed(42)
 class Args:
     occ_map_dir: str = '/scratch/kaustab.pal/iros/dataset/occ_map/' 
     mean_dir: str = '/scratch/kaustab.pal/iros/dataset/mean_controls/'  
-    plot_im_dir: str = '/scratch/kaustab.pal/iros/dataset//plot_im/' 
+    plot_im_dir: str = '/scratch/kaustab.pal/iros/dataset/plot_im/' 
     # val_split: float = 0.3
     # num_epochs: int = 500
     # seed: int = 12321
