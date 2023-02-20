@@ -1,0 +1,88 @@
+{
+    "save_path" : "/data",
+    
+    "carla": {
+        "ip" : "127.0.0.1",
+        "port" : 2000,
+        "timeout" : 10,
+        "world" : "Town03",
+        "synchronous_mode" : true,
+        "fps" : 10,
+        "no_rendering_mode" : false
+    },
+
+    "ego_vehicle" : {
+        "blueprint" : "vehicle.tesla.model3",
+        "spawn_type" : "fixed",
+        "spawn_point" : [233.28, 86.87, 0.5],
+        "sensors" : [
+            {
+                "name" : "lidar",
+                "type"  : "sensor.lidar.ray_cast",
+                "rotation_frequency" : 10,
+                "channels" : 16,
+                "range" : 50,
+                "upper_fov" : 15,
+                "lower_fov" : -15,
+                "points_per_second" : 144000,
+                "noise_stddev_env" : 3.0,
+                "noise_stddev_obs" : 2.0,
+                "dropoff_general_rate" : 0.0,
+                "location" : [0.0, 0.0, 2.0],
+                "rotation" : [0.0, 0.0, 0.0] 
+            },
+            {
+                "name" : "semantic_lidar",
+                "type"  : "sensor.lidar.ray_cast_semantic",
+                "rotation_frequency" : 10,
+                "channels" : 16,
+                "range" : 50,
+                "upper_fov" : 15,
+                "lower_fov" : -15,
+                "points_per_second" : 144000,
+                "noise_stddev_env" : 3.0,
+                "noise_stddev_obs" : 2.0,
+                "location" : [0.0, 0.0, 2.0],
+                "rotation" : [0.0, 0.0, 0.0]
+            },
+            {
+                "name" : "collision",
+                "type" : "sensor.other.collision",
+                "history_length" : 1
+            }
+        ]
+    },
+
+    "traffic_manager" : {
+        "port" : 8000,
+        "random_dvice_seed" : 3
+    },
+
+    "npc" : [
+        {
+            "blueprint" : "vehicle.tesla.model3",
+            "spawn_type" : "relative",
+            "spawn_point" : [5.0, 2.0, 0.5],
+            "desired_speed" : 5.0,
+            "distance_to_leading_vehicle" : 5.0,
+            "ignore_lights_percentage" : 100,
+            "ignore_signs_percentage" : 100,
+            "speed_difference_percentage" : 80.0
+        }, 
+        {
+            "blueprint" : "vehicle.tesla.model3",
+            "spawn_type" : "absolute",
+            "spawn_point" : [10.0, 2.0, 0.5],
+            "desired_speed" : 6.0,
+            "ignore_lights_percentage" : 100,
+            "ignore_signs_percentage" : 100,
+            "speed_difference_percentage" : 80.0
+        }
+    ],
+
+    "stanley" : {
+        "L" : 1.9
+    }
+
+
+}

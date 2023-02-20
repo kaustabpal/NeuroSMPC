@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-from carla_env.carla_env_wpts_obs import CarEnv
+# from carla_env.carla_env_wpts_obs import CarEnv
+from carla_env.carla_env_expts import CarEnv
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,8 +18,8 @@ import pickle
 
 now = datetime.now()
 
-dataset_dir = "/scratch/parth.shah/carla_auto_obs/" + now.strftime("%m-%d-%Y_%H:%M:%S") + "/"
-temp_dir = "/scratch/parth.shah/temp/"
+dataset_dir = "data/experiments/" + now.strftime("%m-%d-%Y_%H:%M:%S") + "/"
+temp_dir = "data/temp/"
 
 save_data = True
 
@@ -54,7 +55,7 @@ def run():
 
     # Setting up Carla
     print("setting up Carla-Gym")
-    env = CarEnv()
+    env = CarEnv('env_config.json')
     print("Starting loop")
     obs = env.reset()
     
@@ -68,7 +69,6 @@ def run():
         tic = time.time()
         best_path, best_controls = planner.generate_path(obstacle_array, global_path, current_speed)
         toc = time.time()
-
         print("----------------------------------")
         print("Time taken: ", toc-tic)
 
@@ -79,17 +79,6 @@ def run():
         best_path[:,[0, 1]] = best_path[:,[1, 0]]
 
         target_speed = best_controls[0,0]
-        # print("Best path: ", best_path)
-        # print("Best path length: ", len(best_path))
-        # print("Best Path shape: ", best_path.shape)
-
-        # print("----------------------------------")
-
-        # print("Best controls: ", best_controls)
-        # print("Best controls length: ", len(best_controls))
-        # print("Best controls shape: ", best_controls.shape)
-
-        # print("Target speed: ", target_speed, best_controls[1,0])
 
         obs, reward, done, info = env.step(best_path, target_speed=target_speed)
         env.render()
@@ -108,18 +97,29 @@ def run():
         # global_path_pixel_coords = np.clip(np.intp(global_path_pixel_coords[:, :2]), 0, 255)
 
 
+        if env.bev is None:
+            continue
+
         bev = env.bev
         obstable_array = env.obstacle_bev
         g_path = env.next_g_path
         speed = env.speed_ego
+        left_lane = env.left_lane_coords
+        right_lane = env.right_lane_coords
+        dyn_obs = env.dyn_obs_poses
+        num_obs = len(env.dyn_obs_poses)
 
+        data = {
+            "obstable_array": obstable_array,
+            "g_path": g_path,
+            "speed": speed,
+            "left_lane": left_lane,
+            "right_lane": right_lane,
+            "dyn_obs": dyn_obs,
+            "num_obs": num_obs
+        }
+        
         if save_data:
-            data = {
-                "obstable_array": obstable_array,
-                "g_path": g_path,
-                "speed": speed
-            }
-
             file_name = temp_dir + "storm/data_" + str(i).zfill(2) + ".pkl"
             with open(file_name, "wb") as f:
                 pickle.dump(data, f)
