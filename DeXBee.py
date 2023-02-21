@@ -88,7 +88,8 @@ class DeXBee:
         global_path = global_path[np.where((global_path[:, 0] < 256) & (global_path[:, 1] < 256) & (global_path[:, 0] >= 0) & (global_path[:, 1] >= 0) )]
         
         global_path_array = np.zeros((256, 256))
-        global_path_array[global_path[:,0], global_path[:,1]] = 255
+        place_holder_array = np.zeros((256, 256))
+        global_path_array[global_path[:,0], -global_path[:,1]] = 255
     
         g_path = global_path_orig - [256/2,256/2] # global path points
         g_path = g_path[:, [1,0]]*30/256
@@ -97,6 +98,11 @@ class DeXBee:
         obstacle_array = np.copy(obstacle_array)
 
         bev = np.dstack([obstacle_array, global_path_array])
+        bev_test = np.dstack([obstacle_array, global_path_array, place_holder_array])
+        cv2.imshow('frame', bev_test)
+        cv2.waitKey(20)
+        # plt.imshow(bev)
+        # plt.show()
         # print("BEV shape : ", bev.shape)
 
         occupancy_map = torch.as_tensor(bev, dtype = self.dtype) # obstacle pos in euclidean space
