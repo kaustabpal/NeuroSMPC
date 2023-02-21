@@ -58,6 +58,8 @@ class LocalPlanner:
 
         if self.visualize:
             plt.ion()
+        
+        self.time_info = {}
 
     def to_continuous(self, obs):
         obs_pos = []    
@@ -79,6 +81,8 @@ class LocalPlanner:
 
 
     def generate_path_nuromppi(self, obstacle_array, global_path, current_speed):
+        tic_ = time.time()
+        tic = time.time()
         ego_speed = current_speed
 
         # Process global path
@@ -106,17 +110,19 @@ class LocalPlanner:
         
         # Process obstacles
         obstacle_positions = np.array(self.to_continuous(obstacle_array))
+        toc = time.time()
+        self.time_info["preprocess"] = toc-tic
 
         tic = time.time()
         with torch.no_grad():
             mean_action = self.model(occupancy_map.unsqueeze(0).to(self.device)).reshape(30,2) # NN output reshaped        
         toc = time.time()
-        print("Time taken for NN : ", toc-tic)
+        self.time_info["model"] = toc-tic
         
         tic = time.time()
         mean_action_cpu = mean_action.detach().cpu()
         toc = time.time()
-        # print("Time taken for GPU-CPU : ", toc-tic)
+        self.time_info["midprocess"] = toc-tic
 
         #Finding the best trajectory
         tic = time.time()
@@ -125,21 +131,30 @@ class LocalPlanner:
         sampler.mean_action = mean_action_cpu
         sampler.infer_traj()
         toc = time.time()
-        print("Time taken for sampling : ", toc-tic)
-
+        self.time_info["sampler"] = toc-tic
+        
+        tic = time.time()
         best_controls = sampler.top_controls[0,:,:] # contains the best v and w
         best_traj = sampler.top_trajs[0,:,:] # contains the best x, y and theta
 
         best_traj = best_traj.detach().cpu().numpy()
         best_controls = best_controls.detach().cpu().numpy()
-        
-        print("Plotting")
+        toc = time.time()
+        self.time_info["postprocess"] = toc-tic
+
+        tic = time.time()
         if self.visualize or self.save:
             self.plotter(obstacle_positions, g_path, sampler, 2.5, current_speed)
-        print("Done plotting")
+        toc = time.time()
+        self.time_info["plot"] = toc-tic
+
+        toc_ = time.time()
+        self.time_info["total"] = toc_-tic_
         return best_traj, best_controls
     
     def generate_path_mppi(self, obstacle_array, global_path, current_speed):
+        tic_ = time.time()
+        tic = time.time()
         ego_speed = current_speed
 
         # Process global path
@@ -155,44 +170,53 @@ class LocalPlanner:
         obstacle_array = np.copy(obstacle_array)
         obstacle_positions = np.array(self.to_continuous(obstacle_array))
         obstacle_positions_frenet = global_to_frenet(obstacle_positions, new_global_path, interpolated_global_path)
+        toc = time.time()
+        self.time_info["preprocess"] = toc-tic
 
         tic = time.time()
         sampler = Goal_Sampler(torch.tensor([0, 0, np.deg2rad(ego_theta)]), 4.13, 0, obstacles=obstacle_positions)
-        
-        tic_ = time.time()
         sampler.plan_traj()
-        toc_ = time.time()
-        print("Time taken for plan_traj : ", toc_-tic_)
+        toc = time.time()
+        self.time_info["plan-traj"] = toc-tic
 
+        tic = time.time()
         mean_controls = sampler.mean_action
         mean_traj = sampler.traj_N[-2, :, :]
         cov_controls = sampler.scale_tril
         mean_controls[:, 1] = frenet_to_global(mean_traj.detach().cpu(), new_global_path, interpolated_global_path, 0.1)
+        toc = time.time()
+        self.time_info["midprocess"] = toc-tic
 
+        tic = time.time()
         sampler.obstacles = obstacle_positions
         sampler.mean_action = torch.as_tensor(mean_controls)
         sampler.c_state = torch.as_tensor([0, 0, np.deg2rad(90)])
-        tic_ = time.time()
         sampler.infer_traj()
-        toc_ = time.time()
-        print("Time taken for infer_traj : ", toc_-tic_)
         toc = time.time()
-        print("Time taken for MPPI : ", toc-tic)
+        self.time_info["infer-traj"] = toc-tic
 
+        tic = time.time()
         best_controls = sampler.top_controls[0,:,:] # contains the best v and w
         best_traj = sampler.top_trajs[0,:,:] # contains the best x, y and theta
 
         best_traj = best_traj.detach().cpu().numpy()
         best_controls = best_controls.detach().cpu().numpy()
-        
-        print("Plotting")
+        toc = time.time()
+        self.time_info["postprocess"] = toc-tic
+
+        tic = time.time()
         if self.visualize or self.save:
             self.plotter(obstacle_positions, global_path, sampler, 2.5, current_speed)
-        print("Done plotting")
+        toc = time.time()
+        self.time_info["plot"] = toc-tic
 
+        toc_ = time.time()
+        self.time_info["total"] = toc_-tic_
         return best_traj, best_controls
 
     def generate_path_gcem(self, obstacle_array, global_path, current_speed):
+        tic_ = time.time()
+        tic = time.time()
         ego_speed = current_speed
 
         # Process global path
@@ -208,15 +232,16 @@ class LocalPlanner:
         obstacle_array = np.copy(obstacle_array)
         obstacle_positions = np.array(self.to_continuous(obstacle_array))
         obstacle_positions_frenet = global_to_frenet(obstacle_positions, new_global_path, interpolated_global_path)
+        toc = time.time()
+        self.time_info["preprocess"] = toc-tic
 
         tic = time.time()
         sampler = GradCEM(torch.tensor([0, 0, np.deg2rad(ego_theta)]), 4.13, 0, obstacles=obstacle_positions)
-        
-        tic_ = time.time()
         sampler.plan_traj()
-        toc_ = time.time()
-        print("Time taken for plan_traj : ", toc_-tic_)
+        toc = time.time()
+        self.time_info["plan-traj"] = toc-tic
 
+        tic = time.time()
         mean_controls = sampler.mean_action
         mean_traj = sampler.traj_N[-2, :, :]
         cov_controls = sampler.scale_tril
@@ -225,13 +250,16 @@ class LocalPlanner:
         sampler.obstacles = obstacle_positions
         sampler.mean_action = torch.as_tensor(mean_controls)
         sampler.c_state = torch.as_tensor([0, 0, np.deg2rad(90)])
-        tic_ = time.time()
-        sampler.infer_traj()
-        toc_ = time.time()
-        print("Time taken for infer_traj : ", toc_-tic_)
         toc = time.time()
-        print("Time taken for GradCEN : ", toc-tic)
+        self.time_info["midprocess"] = toc-tic
 
+
+        tic = time.time()
+        sampler.infer_traj()
+        toc = time.time()
+        self.time_info["infer-traj"] = toc-tic
+
+        tic = time.time()
         # best_controls = sampler.top_controls[0,:,:] # contains the best v and w
         # best_traj = sampler.top_trajs[0,:,:] # contains the best x, y and theta
 
@@ -240,11 +268,16 @@ class LocalPlanner:
 
         best_traj = best_traj.detach().cpu().numpy()
         best_controls = best_controls.detach().cpu().numpy()
+        toc = time.time()
 
-        print("Plotting")
+        tic = time.time()
         if self.visualize or self.save:
             self.plotter(obstacle_positions, global_path, sampler, 2.5, current_speed)
-        print("Done plotting")
+        toc = time.time()
+        self.time_info["plot"] = toc-tic
+
+        toc_ = time.time()
+        self.time_info["total"] = toc_-tic_
         return best_traj, best_controls
 
     def plotter(self, obstacle_positions, global_path, sampler, ego_radius, current_speed, filename = None):
