@@ -55,7 +55,7 @@ class LocalPlanner:
 
         self.model = MLP()
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.model_path = "/car/road-net/mlp_model.state_dict"
+        self.model_path = "data/mlp_model.state_dict"
         self.model.load_state_dict(torch.load(self.model_path, map_location=torch.device(self.device)))
         self.model.to(self.device)
 

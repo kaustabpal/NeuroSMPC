@@ -25,8 +25,8 @@ class DeXBee:
 
         # Args
         self.seed = 12321
-        self.weights_dir = "./data/"
-        self.exp_id = "exp1"
+        self.weights_dir = "data/"
+        self.exp_id = "exp2"
 
         # Set seed
         torch.manual_seed(self.seed)
