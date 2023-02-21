@@ -65,7 +65,7 @@
         {
             "blueprint" : "vehicle.tesla.model3",
             "spawn_type" : "relative",
-            "spawn_point" : [0.0, 10.0, 0.5],
+            "spawn_point" : [10.0, 0.0, 0.5],
             "desired_speed" : 5.0,
             "distance_to_leading_vehicle" : 5.0,
             "ignore_lights_percentage" : 100,
@@ -75,7 +75,7 @@
         {
             "blueprint" : "vehicle.tesla.model3",
             "spawn_type" : "relative",
-            "spawn_point" : [3.0, 22.0, 0.5],
+            "spawn_point" : [20.0, -1.0, 0.5],
             "desired_speed" : 5.0,
             "distance_to_leading_vehicle" : 5.0,
             "ignore_lights_percentage" : 100,
@@ -85,7 +85,7 @@
         {
             "blueprint" : "vehicle.tesla.model3",
             "spawn_type" : "relative",
-            "spawn_point" : [0.0, 34.0, 0.5],
+            "spawn_point" : [30.0, 0.0, 0.5],
             "desired_speed" : 5.0,
             "distance_to_leading_vehicle" : 5.0,
             "ignore_lights_percentage" : 100,
@@ -95,7 +95,7 @@
         {
             "blueprint" : "vehicle.tesla.model3",
             "spawn_type" : "relative",
-            "spawn_point" : [3.0, 46.0, 0.5],
+            "spawn_point" : [40.0, -1.0, 0.5],
             "desired_speed" : 5.0,
             "distance_to_leading_vehicle" : 5.0,
             "ignore_lights_percentage" : 100,

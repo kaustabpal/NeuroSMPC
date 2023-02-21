@@ -464,12 +464,27 @@ class CarEnv():
             elif npc_conf["spawn_type"] == "relative":
                 spawn_point = npc_conf["spawn_point"]
                 
-                spawn_point = [spawn_point[0] + ego_location.x, spawn_point[1] + ego_location.y, spawn_point[2] + ego_location.z]
-
                 npc_tf = carla.Transform()
                 npc_tf.location = carla.Location(x=spawn_point[0], y=spawn_point[1], z=spawn_point[2])
                 
-                wpt = self.map.get_waypoint(npc_tf.location, project_to_road = True)
+                wpt = self.map.get_waypoint(ego_location, project_to_road = True)
+                
+                relative_x = spawn_point[0]
+                wpt = wpt.next(relative_x)[0]
+                
+                relative_y = spawn_point[1]
+                while relative_y != 0:
+                    if relative_y > 0:
+                        if wpt.get_right_lane() is None:
+                            break
+                        wpt = wpt.get_right_lane()
+                        relative_y -= 1
+                    elif relative_y < 0:
+                        if wpt.get_left_lane() is None:
+                            break
+                        wpt = wpt.get_left_lane()
+                        relative_y += 1
+
                 npc_tf = wpt.transform
                 npc_tf.location.z = spawn_point[2]
  
