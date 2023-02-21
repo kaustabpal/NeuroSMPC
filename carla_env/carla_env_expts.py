@@ -196,7 +196,8 @@ class CarEnv():
         done = self.check_for_collision()
 
         reward, state = None, None
-        return obs, reward, done, state
+        action = [throttle, brake, steer]
+        return obs, reward, done, state, action
 
     def reset(self):
         # Reset the state of the environment to an initial state

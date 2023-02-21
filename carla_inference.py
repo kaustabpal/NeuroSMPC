@@ -98,9 +98,19 @@ def run():
         target_speed = best_controls[0,0]
         ego_pose = env.ego_pose
         ego_path.append(ego_pose)
+        target_velocities.append(target_speed)
+        ego_velocities.append(current_speed)
 
-        obs, reward, done, info = env.step(best_path, target_speed=target_speed)
+        obs, reward, done, state, action = env.step(best_path, target_speed=target_speed)
         env.render()
+
+        controls.append(action)
+        
+        collisions.append(0)
+        if done:
+            collisions.pop()
+            collisions.append(1)
+            break
 
         if env.bev is None:
             continue
