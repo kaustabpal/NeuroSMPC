@@ -42,6 +42,7 @@ class CarEnv():
         self.lidar_sen = None
         self.semantic_lidar_sen = None
 
+        self.ego_pose = None
         self.ego_path = []
         self.frame = -1
 
@@ -150,6 +151,9 @@ class CarEnv():
 
         self.frame += 1
         
+        self.ego_pose = self.ego.get_transform()
+        self.ego_path.append(self.ego_pose)
+
         vel_ego = self.ego.get_velocity()
         self.ego_speed = np.linalg.norm(np.array([vel_ego.x, vel_ego.y]))
         
@@ -198,6 +202,7 @@ class CarEnv():
         # Reset the state of the environment to an initial state
         print("Resetting the environment")
         self.frame = -1
+        self.ego_path = []
 
         time.sleep(1.5)
         
