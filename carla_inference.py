@@ -18,7 +18,7 @@ import pickle
 
 now = datetime.now()
 
-EXPT_NAME = "nuroMPPI_1"
+EXPT_NAME = "NuroMPPI_1"
 
 dataset_dir = "data/experiments/" + EXPT_NAME + "/"
 temp_dir = "data/temp/"
