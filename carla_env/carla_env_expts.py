@@ -151,8 +151,9 @@ class CarEnv():
 
         self.frame += 1
         
-        self.ego_pose = self.ego.get_transform()
-        self.ego_path.append(self.ego_pose)
+        self.ego_tf = self.ego.get_transform()
+        self.ego_path.append(self.ego_tf)
+        self.ego_pose = np.array([self.ego_tf.location.x, self.ego_tf.location.y, self.ego_tf.location.z, self.ego_tf.rotation.yaw, self.ego_tf.rotation.pitch, self.ego_tf.rotation.roll])
 
         vel_ego = self.ego.get_velocity()
         self.ego_speed = np.linalg.norm(np.array([vel_ego.x, vel_ego.y]))
@@ -193,7 +194,9 @@ class CarEnv():
         if np.abs(y_offset) > 1.5:
             print('!!!!!!OUT OF LANE!!!!!!!!!')
 
-        done = self.check_for_collision()
+        done, collided_sensors = self.check_for_collision()
+
+        print("Done  - ", done)
 
         reward, state = None, None
         action = [throttle, brake, steer]
@@ -422,7 +425,7 @@ class CarEnv():
         intensity = np.sqrt(impulse.x**2 + impulse.y**2 + impulse.z**2)
         self.sensor_data[sensor_name].append(intensity)
 
-        if len(self.collision_hist)>sensor_conf["history_length"]:
+        if len(self.sensor_data[sensor_name])>sensor_conf["history_length"]:
             self.sensor_data[sensor_name].pop(0)
 
     def dummy_callback(self, data):
@@ -486,20 +489,27 @@ class CarEnv():
                         relative_y += 1
 
                 npc_tf = wpt.transform
-                npc_tf.location.z = spawn_point[2]
+                npc_tf.location.z += spawn_point[2]
  
             number_of_tries = 10
             npc = None 
             while npc is None:
                 npc_bp = self.world.get_blueprint_library().find(npc_conf["blueprint"])
-                npc = self.world.spawn_actor(npc_bp, npc_tf)
+
+                try:
+                    npc = self.world.spawn_actor(npc_bp, npc_tf)
+                except Exception as e:
+                    npc = None
+                    print("----Failed to spawn NPC - ", i, " - ", npc_conf["blueprint"], " - at ", npc_tf.location)
+                    print(e)
 
                 if (npc is None) and number_of_tries > 0:
                     number_of_tries -= 1
                     continue
                 elif npc is None:
-                    print("----Failed to spawn NPC - ", i, " - ", npc_conf["blueprint"], " - at ", spawn_point)
+                    print("----Failed to spawn NPC - ", i, " - ", npc_conf["blueprint"], " - at ", npc_tf.location)
                     break
+
                 print("----Spawned NPC - ", i, " - ", npc_conf["blueprint"], " - at ", spawn_point)
                 npc.set_autopilot(True)
                 
@@ -702,9 +712,10 @@ class CarEnv():
         collided_sensors = []
         for c_s in collision_sensors:          
             collision_hist = self.sensor_data[c_s]
-            if len(collision_hist)>0: 
+            if len(collision_hist) > 0: 
                 collision = collision or True
                 collided_sensors.append(c_s)
+                print('Collision with ', c_s)
             
         return collision, collided_sensors
         

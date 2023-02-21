@@ -20,7 +20,7 @@ from pprint import pprint
 
 np.set_printoptions(precision=3, suppress=True)
 
-EXPT_NAME = "NuroMPPI_1"
+EXPT_NAME = "GradCEM_1"
 
 dataset_dir = "data/experiments/" + EXPT_NAME + "/"
 temp_dir = "data/temp/"
@@ -51,6 +51,8 @@ signal.signal(signal.SIGINT, handler)
 def run():
     # Setting up planner
     planner_type = EXPT_NAME.split("_")[0]
+
+    print("Using planner: ", planner_type)
     planner = LocalPlanner(planner=planner_type)
     
     os.system('rm -rf ' + temp_dir)
@@ -99,7 +101,7 @@ def run():
 
         target_speed = best_controls[0,0]
         ego_pose = env.ego_pose
-        ego_path.append(ego_pose)
+        ego_path.append(ego_pose)   # [x,y,z,yaw,pitch,roll]
         target_velocities.append(target_speed)
         ego_velocities.append(current_speed)
 
@@ -112,6 +114,7 @@ def run():
         if done:
             collisions.pop()
             collisions.append(1)
+            print("Collision detected - Exiting")
             break
 
         if env.bev is None:
@@ -146,7 +149,7 @@ def run():
         }
 
         if save_data:
-            file_name = temp_dir + "storm/data_" + str(i).zfill(2) + ".pkl"
+            file_name = temp_dir + "data/data_" + str(i).zfill(2) + ".pkl"
             with open(file_name, "wb") as f:
                 pickle.dump(data, f)
 
@@ -163,7 +166,8 @@ def run():
         pprint(planner.time_info)
 
         i += 1
-
+    
+    handler(1,1)
 
 
 if __name__=='__main__':

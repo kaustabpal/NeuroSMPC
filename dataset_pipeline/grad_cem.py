@@ -18,7 +18,7 @@ class GradCEM:
     def __init__(self, c_state, vl, wl, obstacles, num_particles = 1000, device='cpu'):
         # agent info
         self.device = "cpu" # torch.device("cuda" if torch.cuda.is_available() else "cpu") # "cpu"
-        self.radius = 1.80
+        self.radius = 2.50
         self.c_state = c_state # start state
         # self.c_state.device = self.device
         self.c_state.requires_grad = True

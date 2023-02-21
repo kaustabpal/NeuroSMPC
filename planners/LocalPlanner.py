@@ -266,8 +266,10 @@ class LocalPlanner:
         best_controls = sampler.controls_N[-2,:,:] # contains the best v and w
         best_traj = sampler.traj_N[-2,:,:] # contains the best x, y and theta
 
-        best_traj = best_traj.detach().cpu().numpy()
-        best_controls = best_controls.detach().cpu().numpy()
+        print("best traj", len(best_traj))
+
+        best_traj = best_traj.detach().cpu().numpy()[12:]
+        best_controls = best_controls.detach().cpu().numpy()[12:]
         toc = time.time()
 
         tic = time.time()
@@ -300,11 +302,12 @@ class LocalPlanner:
         plt.plot(traj_N[:,:,0], traj_N[:,:,1], '.b', markersize=1, alpha=0.04)
 
         # Predicted trajectory
-        plt.plot(traj_N[-2,:,0], traj_N[-2,:,1], 'red', markersize=3, label = "Predicted")
+        plt.plot(traj_N[-2,12:,0], traj_N[-2,12:,1], 'red', markersize=3, label = "Predicted")
 
-        # Best trajectory
-        top_trajs = sampler.top_trajs.detach().cpu().numpy()
-        plt.plot(top_trajs[0,:,0], top_trajs[0,:,1], 'lime', markersize=2, label = "best traj")
+        if self.planner_type != "GradCEM":
+            # Best trajectory
+            top_trajs = sampler.top_trajs.detach().cpu().numpy()
+            plt.plot(top_trajs[0,:,0], top_trajs[0,:,1], 'lime', markersize=2, label = "best traj")
         
         # Set Limits
         plt.ylim(-15,15)
