@@ -16,7 +16,9 @@ from planners.LocalPlanner import LocalPlanner
 from datetime import datetime
 import pickle
 
-now = datetime.now()
+from pprint import pprint
+
+np.set_printoptions(precision=3, suppress=True)
 
 EXPT_NAME = "NuroMPPI_1"
 
@@ -157,7 +159,9 @@ def run():
             file_name = temp_dir + "run_info/run_info.pkl"
             with open(file_name, "wb") as f:
                 pickle.dump(run_info, f)
-        
+
+        pprint(planner.time_info)
+
         i += 1
 
 
