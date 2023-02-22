@@ -24,13 +24,13 @@ class Model1(nn.Module):
                 nn.Dropout(0.2),
                 nn.Linear(1280, 1280),
                 nn.BatchNorm1d(1280),
-                nn.ReLU(True),
+                nn.ReLU6(True),
                 nn.Linear(1280, 256),
                 nn.BatchNorm1d(256),
-                nn.ReLU(True),
+                nn.ReLU6(True),
                 nn.Linear(256, 128),
                 nn.BatchNorm1d(128),
-                nn.ReLU(True),
+                nn.ReLU6(True),
                 nn.Linear(128,60)
             )
 

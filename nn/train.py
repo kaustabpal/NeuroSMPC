@@ -23,7 +23,7 @@ class Args:
     val_split: float = 0.3
     num_epochs: int = 500
     seed: int = 12321
-    exp_id: str = 'exp2'
+    exp_id: str = 'relu6'
 args = tyro.cli(Args)
 
 
@@ -56,8 +56,8 @@ def main():
     model = Model1().to(device)
     params = list(model.parameters())
     criterion = nn.MSELoss()
-    #optimizer = torch.optim.Adam(params, lr=learning_rate)
-    optimizer = Lion(model.parameters(), lr = learning_rate)
+    optimizer = torch.optim.Adam(params, lr=learning_rate)
+    #optimizer = Lion(model.parameters(), lr = learning_rate)
     scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.33, patience=10, threshold=0.01, verbose=True)
     #scheduler = CosineAnnealingLR(optimizer,
     #                            T_max = 400, # Maximum number of iterations.
