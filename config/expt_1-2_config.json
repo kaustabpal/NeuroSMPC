@@ -19,7 +19,7 @@
     "ego" : {
         "blueprint" : "vehicle.tesla.model3",
         "spawn_type" : "fixed",
-        "spawn_point" : [-150.0, 10.0, 0.5],
+        "spawn_point" : [-80.0, 12.0, 5],
         "stanley" : {
             "L" : 1.9
         },

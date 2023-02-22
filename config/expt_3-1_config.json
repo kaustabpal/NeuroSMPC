@@ -19,7 +19,7 @@
     "ego" : {
         "blueprint" : "vehicle.tesla.model3",
         "spawn_type" : "fixed",
-        "spawn_point" : [230.28, 86.87, 0.5],
+        "spawn_point" : [200.0, 200.0, 0.5],
         "stanley" : {
             "L" : 1.9
         },
@@ -62,5 +62,17 @@
     },
 
     "npc" : [
+            {
+            "id" : 1,
+            "blueprint" : "vehicle.tesla.model3",
+            "spawn_type" : "relative",
+            "control_type" : "waypoint",
+            "spawn_point" : [17.0, 0.0, 0.5],
+            "target_speed" : 0,
+            "distance_to_leading_vehicle" : 5.0,
+            "ignore_lights_percentage" : 100,
+            "ignore_signs_percentage" : 100,
+            "speed_difference_percentage" : 80.0
+        }
     ]
 }

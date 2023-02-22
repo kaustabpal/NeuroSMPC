@@ -85,7 +85,7 @@ class CarEnv():
                                                 z = ego_config["spawn_point"][2])
             wpt = self.map.get_waypoint(self.ego_trans_init.location, project_to_road=True, lane_type=carla.LaneType.Driving)
             self.ego_trans_init = wpt.transform
-            self.ego_trans_init.location.z = ego_config["spawn_point"][2]
+            self.ego_trans_init.location.z += ego_config["spawn_point"][2]
         
 
         self.tf_matrix = np.array(self.ego_trans_init.get_matrix())

@@ -1,5 +1,5 @@
 {
-    "save_path" : "data/",
+    "save_path" : "/data",
     
     "carla_client": {
         "ip" : "127.0.0.1",
@@ -19,7 +19,7 @@
     "ego" : {
         "blueprint" : "vehicle.tesla.model3",
         "spawn_type" : "fixed",
-        "spawn_point" : [-150.0, 10.0, 0.5],
+        "spawn_point" : [330.0, -245.0, 0.5],
         "stanley" : {
             "L" : 1.9
         },
@@ -63,4 +63,5 @@
 
     "npc" : [
     ]
+
 }
