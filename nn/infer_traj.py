@@ -1,5 +1,7 @@
 import torch
 from dataset_pipeline.goal_sampler_static_obs import Goal_Sampler
+from dataset_pipeline.grad_cem import GradCEM
+from dataset_pipeline.frenet_transformations import global_traj, global_to_frenet, frenet_to_global
 from matplotlib import pyplot as plt
 from matplotlib import pyplot as plt
 import numpy as np
@@ -18,7 +20,8 @@ import copy
 
 @dataclass
 class Args:
-    dataset_dir: str = '/Users/kaustabpal/work/iros_23/sparse_data/' # occ_map/' #'../carla_latest/' # 'data/dataset_beta/'
+    # dataset_dir: str = '/Users/kaustabpal/work/iros_23/sparse_data/test/' # occ_map/' #'../carla_latest/' # 'data/dataset_beta/'
+    dataset_dir: str = '/Users/kaustabpal/work/10kdata/' # occ_map/' #'../carla_latest/' # 'data/dataset_beta/'
     weights_dir: str = '../iros_23/weights/' 
     loss_dir: str = '../iros_23/loss/' 
     infer_dir: str = "../iros_23/infer_dir/"
@@ -26,7 +29,7 @@ class Args:
     val_split: float = 0.3
     num_epochs: int = 1000
     seed: int = 12321
-    exp_id: str = 'exp1'
+    exp_id: str = 'relu6'
 args = tyro.cli(Args)
 
 def to_continuous(obs):
@@ -45,6 +48,7 @@ def run():
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
     os.makedirs(args.infer_dir, exist_ok=True)
+    os.makedirs(args.infer_dir+args.exp_id +"/", exist_ok=True)
     
     model = Model1()
     weights = torch.load(args.weights_dir+"model_"+args.exp_id+".pt", map_location=torch.device(device))
@@ -56,16 +60,16 @@ def run():
     
     nn_time = []
     # torch.save(model.state_dict(), model_path)
-    for i in range(len(occ_map_files)):
+    for i in range(2483, len(occ_map_files)):
         t_1 = time.time()
         print(i)
         obs_pos = []
         file_name = args.dataset_dir+"occ_map/" + "data_" + str(i).zfill(5) + ".pkl"
         # plt_save_file_name = plot_im_dir + "data_" + str(i)
         # mean_save_filename = args.dataset_dir+"mean_controls/" + "data_" + str(i) + ".npy"
-        infer_file_name = args.infer_dir + "data_" + str(i).zfill(5)
-        mean_controls_gt = np.load(args.dataset_dir+"mean_controls/" + "data_" + str(i).zfill(5) + ".npy")
-        mean_controls_gt = torch.as_tensor(mean_controls_gt, dtype=dtype, device = device)
+        infer_file_name = args.infer_dir+args.exp_id +"/" + "data_" + str(i).zfill(5)
+        # mean_controls_gt = np.load(args.dataset_dir+"mean_controls/" + "data_" + str(i).zfill(5) + ".npy")
+        # mean_controls_gt = torch.as_tensor(mean_controls_gt, dtype=dtype, device = device)
         with open(file_name, "rb") as f:
             data = pickle.load(f)
             
@@ -87,32 +91,56 @@ def run():
         g_path = g_path[:, [1,0]]*30/256
         
         obs_pos = np.array(to_continuous(obs_array))
-        
-        sampler1 = Goal_Sampler(torch.tensor([0,0,np.deg2rad(90)]), 4.13, 0, obstacles=obs_pos, num_particles = 100)
+                
+        nmppi = Goal_Sampler(torch.tensor([0,0,np.deg2rad(90)]), 4.13, 0, obstacles=obs_pos, num_particles = 100)
         t1 = time.time()
         model.eval()
         with torch.no_grad():
-            sampler1.mean_action = model(occ_map.unsqueeze(0)).reshape(30,2) # NN output reshaped
+            nmppi.mean_action = model(occ_map.unsqueeze(0)).reshape(30,2) # NN output reshaped
         # print(sampler1.mean_action)
         # quit()
-        sampler1.infer_traj()
+        nmppi.infer_traj()
         t2 = time.time()
         nn_time.append(t2-t1)
-        print("Sampler 1 Inference time: ", t2-t1)
+        print("Neuro MPPI Inference time: ", t2-t1)
 
         t1 = time.time()
-        sampler2 = Goal_Sampler(torch.tensor([0,0,np.deg2rad(90)]), 4.13, 0, obstacles=obs_pos, num_particles = 100)
-        sampler2.mean_action = mean_controls_gt
-        sampler2.infer_traj()
-        print("Sampler 2 Inference time: ", time.time()-t1)
-        # sampler1.num_particles = 1
-        # sampler2.num_particles = 1
+        new_g_path, interpolated_g_path, theta = global_traj(g_path, 0.1)
+        ego_theta = np.rad2deg(np.pi/2 + (np.pi/2 - theta[0]))
+        obs_pos_frenet = global_to_frenet(obs_pos, new_g_path, interpolated_g_path)
+        mppi = Goal_Sampler(torch.tensor([0,0,np.deg2rad(90)]), 4.13, 0, obstacles=obs_pos_frenet, num_particles = 100)
+        mppi.plan_traj()
+        mean_controls1 = mppi.mean_action
+        mean_traj1 = mppi.traj_N[-2,:,:]
+        cov_controls1 = mppi.scale_tril
+        mean_controls1[:,1] = frenet_to_global(mean_traj1, new_g_path, interpolated_g_path, 0.1)
+        mppi.obstacles = obs_pos
+        mppi.mean_action = torch.as_tensor(mean_controls1)
+        mppi.c_state = torch.tensor([0,0,np.deg2rad(90)])
+        mppi.infer_traj()
+        print("MPPI Inference time: ", time.time()-t1)
+
+        t1 = time.time()
+        new_g_path, interpolated_g_path, theta = global_traj(g_path, 0.1)
+        ego_theta = np.rad2deg(np.pi/2 + (np.pi/2 - theta[0]))
+        obs_pos_frenet = global_to_frenet(obs_pos, new_g_path, interpolated_g_path)
+        gradcem = GradCEM(torch.tensor([0,0,np.deg2rad(90)]), 4.13, 0, obstacles=obs_pos, num_particles = 100)
+        gradcem.plan_traj()
+        mean_controls1 = gradcem.mean_action
+        mean_traj1 = gradcem.traj_N[-2,:,:]
+        cov_controls1 = gradcem.scale_tril
+        mean_controls1[:,1] = frenet_to_global(mean_traj1.detach(), new_g_path, interpolated_g_path, 0.1)
+        gradcem.obstacles = obs_pos
+        gradcem.mean_action = torch.as_tensor(mean_controls1)
+        gradcem.c_state = torch.tensor([0,0,np.deg2rad(90)])
+        gradcem.infer_traj()
+        print("GradCEM Inference time: ", time.time()-t1)
         
         
-        print("Total time: ", time.time()-t_1)
+        # print("Total time: ", time.time()-t_1)
         # quit()
 
-        plt.scatter(g_path[:,0],g_path[:,1],color='blue', alpha=0.1)
+        plt.scatter(g_path[:,0],g_path[:,1],color='blue', alpha=0.1, label = "Global path")
 
         x_car, y_car = draw_circle(0, 0, 1.80)
         plt.plot(x_car,y_car,'g')
@@ -123,20 +151,24 @@ def run():
         plt.plot(obs_pos[:,0], obs_pos[:,1], 'k.')
             
         # for j in range(sampler.traj_N.shape[0]):
-        plt.plot(sampler1.traj_N[:,:,0], sampler1.traj_N[:,:,1], '.b', markersize=1, alpha=0.04)
-        plt.plot(sampler2.traj_N[-2,:,0], sampler2.traj_N[-2,:,1], 'orange', markersize=3,  label = "Ground Truth")
-        plt.plot(sampler1.traj_N[-2,:,0], sampler1.traj_N[-2,:,1], 'red', markersize=3, label = "Predicted")
-        plt.plot(sampler1.top_trajs[0,:,0], sampler1.top_trajs[0,:,1], 'lime', markersize=2, label = "NN best traj")
-        plt.plot(sampler2.top_trajs[0,:,0], sampler2.top_trajs[0,:,1], 'pink', markersize=2, label = "GT best traj")
+        # plt.plot(nmppi.traj_N[:,:,0], sampler1.traj_N[:,:,1], '.b', markersize=1, alpha=0.1)
+        # plt.plot(sampler2.traj_N[-2,:,0], sampler2.traj_N[-2,:,1], 'orange', markersize=3,  label = "Ground Truth")
+        plt.plot(nmppi.traj_N[-2,:,0], nmppi.traj_N[-2,:,1], 'red', markersize=3, label = "Neuro-MPPI")
+        plt.plot(mppi.traj_N[-2,:,0], mppi.traj_N[-2,:,1], 'green', markersize=3, label = "MPPI")
+        plt.plot(gradcem.traj_N[-2,:,0].detach(), gradcem.traj_N[-2,:,1].detach(), 'blue', markersize=3, label = "GradCEM")
+        # plt.plot(sampler1.top_trajs[0,:,0], sampler1.top_trajs[0,:,1], 'green', markersize=2, label = "Best traj")
+        # plt.plot(sampler2.top_trajs[0,:,0], sampler2.top_trajs[0,:,1], 'pink', markersize=2, label = "GT best traj")
         
         plt.ylim(-15,15)
         plt.xlim(-15,15)
         plt.legend(loc="lower center")
+        plt.xticks([])
+        plt.yticks([])
         # print(sampler.top_trajs[0,:,:2])
-        plt.savefig(infer_file_name, dpi=500)
-        # plt.show()
+        # plt.savefig(infer_file_name, dpi=500)
+        plt.show()
         plt.clf()
-        # quit()
+        quit()
     nn_time = np.array(nn_time)
     print(np.mean(nn_time))
     np.save(args.time_dir+'nn_time', nn_time)

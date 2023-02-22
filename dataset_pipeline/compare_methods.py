@@ -74,10 +74,7 @@ def run():
         obs_pos = np.array(to_continuous(obs))
 
         new_g_path, interpolated_g_path, theta = global_traj(g_path, 0.1)
-
         ego_theta = np.rad2deg(np.pi/2 + (np.pi/2 - theta[0]))
-        # print(ego_theta)
-        
         obs_pos_frenet = global_to_frenet(obs_pos, new_g_path, interpolated_g_path)
         
         t1 = time.time()
