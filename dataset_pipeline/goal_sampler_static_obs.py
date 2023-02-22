@@ -179,7 +179,11 @@ class Goal_Sampler:
         state = state + a@controls.float()*self.dt
         return state
     
+<<<<<<< HEAD
     def rollout(self, s_o = 10, s_s = 10, s_c = 1, s_m = 0):
+=======
+    def rollout(self, s_o = 10, s_s = 1.0, s_c = 0.1, s_m = 0):
+>>>>>>> 12c63fe3ef8b7b81d1cc68efc820f70771ebbfb5
         # print(self.num_particles)
         # print(self.controls_N.shape[0])
         t_r = time.time()
@@ -310,7 +314,11 @@ class Goal_Sampler:
         self.cov_action = self.init_cov_action
         # self.scale_tril = torch.sqrt(self.cov_action)
         # self.full_scale_tril = torch.diag(self.scale_tril)
+<<<<<<< HEAD
         for i in range(1):
+=======
+        for i in range(4):
+>>>>>>> 12c63fe3ef8b7b81d1cc68efc820f70771ebbfb5
             self.scale_tril = torch.sqrt(self.cov_action)
             self.full_scale_tril = torch.diag(self.scale_tril)
             t1 = time.time()

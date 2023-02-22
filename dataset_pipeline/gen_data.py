@@ -18,9 +18,9 @@ torch.manual_seed(42)
 
 @dataclass
 class Args:
-    occ_map_dir: str = '/Users/kaustabpal/work/iros_23/sparse_data/occ_map/' # '/scratch/kaustab.pal/iros/dataset/occ_map/' 
-    mean_dir: str = '/Users/kaustabpal/work/sparse_data/mean_controls/' # '/scratch/kaustab.pal/iros/dataset/mean_controls/'  
-    plot_im_dir: str = '/Users/kaustabpal/work/sparse_data/plot_im/' # '/scratch/kaustab.pal/iros/dataset/plot_im/' 
+    occ_map_dir: str = '/scratch/kaustab.pal/iros/sparse_data/occ_map/' # '/scratch/kaustab.pal/iros/dataset/occ_map/' 
+    mean_dir: str = '/scratch/kaustab.pal/iros/sparse_data/mean_controls/' # '/scratch/kaustab.pal/iros/dataset/mean_controls/'  
+    plot_im_dir: str = '/scratch/kaustab.pal/iros/sparse_data/plot_im/' # '/scratch/kaustab.pal/iros/dataset/plot_im/' 
     # val_split: float = 0.3
     # num_epochs: int = 500
     # seed: int = 12321
@@ -46,7 +46,7 @@ def run():
     os.makedirs(mean_dir, exist_ok=True)
     files = os.listdir(dataset_dir)
     print("Dataset size: ", len(files))
-    for i in range(1879,len(files)):
+    for i in range(0,len(files)):
         t_1 = time.time()
         
         obs_pos = []
@@ -96,7 +96,7 @@ def run():
         sampler.mean_action = torch.as_tensor(mean_controls)
         sampler.c_state = torch.tensor([0,0,np.deg2rad(90)])
         sampler.infer_traj()
-        # np.save(mean_save_filename,sampler.mean_action)
+        np.save(mean_save_filename,sampler.mean_action)
         
         ## plot
         plt.scatter(g_path[:,0],g_path[:,1],color='blue', alpha=0.1)
@@ -115,8 +115,8 @@ def run():
         plt.ylim([-15,15])
         plt.title("Ego velocity: "+str(round(ego_speed,2)))
         # print(sampler.top_trajs[0,:,:2])
-        # plt.savefig(plt_save_file_name)
-        plt.show()
+        plt.savefig(plt_save_file_name)
+        #plt.show()
         plt.clf()
         # quit()
 
