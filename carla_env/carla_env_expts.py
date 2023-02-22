@@ -64,7 +64,10 @@ class CarEnv():
         settings.synchronous_mode = carla_config["synchronous_mode"]
         settings.fixed_delta_seconds = 1 / carla_config["fps"]  # FPS = 1/0.1 = 10
         settings.no_rendering_mode = carla_config["no_rendering_mode"]
+
         self.world.apply_settings(settings)
+        self.world.set_weather(carla.WeatherParameters.ClearNoon)
+
         self.map = self.world.get_map()
 
         print("--ego setup")
@@ -267,7 +270,7 @@ class CarEnv():
 
     def close(self):
         print("Destroying everything")
-        things_to_destroy = [self.dummy] + list(self.sensors.values()) + [self.ego] + self.npcs
+        things_to_destroy = [self.dummy] + list(self.sensors.values()) + [self.ego] + list(self.npcs.values())
         
         i = 0
         for thing in things_to_destroy:

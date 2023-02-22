@@ -20,7 +20,7 @@ from pprint import pprint
 
 np.set_printoptions(precision=3, suppress=True)
 
-EXPT_NAME = "GradCEM_1"
+EXPT_NAME = "NuroMPPI_1-1"
 
 dataset_dir = "data/experiments/" + EXPT_NAME + "/"
 temp_dir = "data/temp/"
@@ -52,7 +52,7 @@ signal.signal(signal.SIGINT, handler)
 def run():
     # Setting up planner
     planner_type = EXPT_NAME.split("_")[0]
-
+    expt_ver = EXPT_NAME.split("_")[1]
     print("Using planner: ", planner_type)
     planner = LocalPlanner(planner=planner_type)
     
@@ -63,7 +63,8 @@ def run():
     os.makedirs(temp_dir + "planner", exist_ok=True)
     os.makedirs(temp_dir + "run_info", exist_ok=True)
     os.makedirs(temp_dir + "god_view", exist_ok=True)
-
+    
+    config_file = "config/expt_" + expt_ver + "_config.json"
     env = CarEnv('env_config.json')
     obs = env.reset()
     
