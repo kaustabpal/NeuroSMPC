@@ -53,18 +53,38 @@ class Im2ControlsDataset_Temporal(Dataset):
     def __init__(self, dataset_dir, transform=None, past_frames=5):
         self.occ_map_dir = dataset_dir+'temp/storm/'
         self.controls_dir = dataset_dir+'mean_controls/'
+        self.past_frames = past_frames
+        self.sequences = [
+            [0,     1008],
+            [1009,  1257],
+            [1258,  1683],
+            [2367,  3092],
+            [3093,  3867],
+            [3868,  5066],
+            [5067,  5202],
+        ]
         self.occ_map_files_unsorted = [f for f in os.listdir(self.occ_map_dir) if not f.startswith('.')] 
         self.controls_files_unsorted = [f for f in os.listdir(self.controls_dir) if not f.startswith('.')]
         self.occ_map_files =natsorted(self.occ_map_files_unsorted, key=lambda y: y.lower())
         self.controls_files =natsorted(self.controls_files_unsorted, key=lambda y: y.lower())
-        self.len = len(self.occ_map_files)-past_frames+1
-        self.past_frames = past_frames
+        self.idx_map = self._get_idx_map()
+        self.len = len(self.idx_map)
+
+    def _get_idx_map(self):
+        idx_map = []
+        for seq in self.sequences:
+            for i in range(seq[0], seq[1]-3):
+                idx_map.append(i)
+        return idx_map
+
 
     def __len__(self):
         return self.len
 
     def __getitem__(self, idx):
         # TODO: Normalize controls and inputs
+        idx = self.idx_map[idx]
+        print('Mapped Idx: ', idx)
         dtype = torch.float32
         with open(self.occ_map_dir+self.occ_map_files[idx], "rb") as f:
             data = pickle.load(f)

@@ -17,7 +17,7 @@ import os
 
 @dataclass
 class Args:
-    dataset_dir: str = 'data/carla_dyn2/' #'../iros_23/dataset/' #'/scratch/kaustab.pal/iros_23/dataset/' # 'data/dataset_beta/'
+    dataset_dir: str = 'data/carla_dyn_obs_data/' #'../iros_23/dataset/' #'/scratch/kaustab.pal/iros_23/dataset/' # 'data/dataset_beta/'
     weights_dir: str = 'data/weights/' #'../iros_23/weights/' #'/scratch/kaustab.pal/iros_23/weights/' 
     loss_dir: str = 'data/loss/'  #'../iros_23/loss/' #'/scratch/kaustab.pal/iros_23/loss/' 
     val_split: float = 0.3
@@ -37,6 +37,7 @@ def main():
     print("Device: ",device)
     ### Datset Setup ####
     dataset = Im2ControlsDataset_Temporal(dataset_dir=args.dataset_dir, past_frames=args.past_frames)
+    breakpoint()
     total_size = len(dataset)
     test_size = int(total_size * 0.0)
     val_size = int(total_size * args.val_split)
