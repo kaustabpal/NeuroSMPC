@@ -84,9 +84,9 @@ class Im2ControlsDataset_Temporal(Dataset):
     def __getitem__(self, idx):
         # TODO: Normalize controls and inputs
         idx = self.idx_map[idx]
-        print('Mapped Idx: ', idx)
         dtype = torch.float32
-        with open(self.occ_map_dir+self.occ_map_files[idx], "rb") as f:
+        occ_map_file = 'data_'+str(idx).zfill(2)+'.pkl'
+        with open(self.occ_map_dir+occ_map_file, "rb") as f:
             data = pickle.load(f)
 
         # Plotting g_path on occ_map in separate channel
@@ -102,7 +102,8 @@ class Im2ControlsDataset_Temporal(Dataset):
         bev = np.dstack([obs_array, g_path_array])
         
         for i in range(1, self.past_frames):
-            with open(self.occ_map_dir+self.occ_map_files[idx+i], "rb") as f:
+            occ_map_file = 'data_'+str(idx+i).zfill(2)+'.pkl'
+            with open(self.occ_map_dir+occ_map_file, "rb") as f:
                 data = pickle.load(f)
             obs_array = data['obstable_array']
             bev = np.dstack([obs_array, bev])
@@ -113,7 +114,8 @@ class Im2ControlsDataset_Temporal(Dataset):
 
         occ_map = torch.as_tensor(bev, dtype = dtype)
         occ_map = torch.permute(occ_map, (2,0,1)) / 255.0 # Use better normalization
-        controls = torch.as_tensor(np.load(self.controls_dir+self.controls_files[idx]), dtype = dtype).flatten()
+        controls_file = 'data_'+str(idx).zfill(2)+'.npy'
+        controls = torch.as_tensor(np.load(self.controls_dir+controls_file), dtype = dtype).flatten()
         sample = {'occ_map': occ_map, 'controls': controls}
 
         return sample

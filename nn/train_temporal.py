@@ -37,7 +37,6 @@ def main():
     print("Device: ",device)
     ### Datset Setup ####
     dataset = Im2ControlsDataset_Temporal(dataset_dir=args.dataset_dir, past_frames=args.past_frames)
-    breakpoint()
     total_size = len(dataset)
     test_size = int(total_size * 0.0)
     val_size = int(total_size * args.val_split)
