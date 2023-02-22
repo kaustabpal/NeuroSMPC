@@ -5,7 +5,7 @@
         "ip" : "127.0.0.1",
         "port" : 2000,
         "timeout" : 10,
-        "world" : "Town03",
+        "world" : "Town04",
         "synchronous_mode" : true,
         "fps" : 10,
         "no_rendering_mode" : false

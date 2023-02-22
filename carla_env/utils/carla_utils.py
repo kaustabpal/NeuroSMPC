@@ -28,15 +28,13 @@ import jax.numpy as jnp
 import jax
 import cv2
 
-import bernstein_coeff_order10_arbitinterval
-import mpc_path_following_3_LAX
 import matplotlib.pyplot as plt
 from scipy.io import loadmat
 import matplotlib.patches as pt
 import matplotlib.collections
 import scipy
 import time
-import carla_simulation_static
+
 import carla
 import sys
 
