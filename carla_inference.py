@@ -65,7 +65,7 @@ def run():
     os.makedirs(temp_dir + "god_view", exist_ok=True)
     
     config_file = "config/expt_" + expt_ver + "_config.json"
-    env = CarEnv('env_config.json')
+    env = CarEnv(config_file)
     obs = env.reset()
     
     x = input("Press s to start")
