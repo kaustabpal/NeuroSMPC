@@ -83,7 +83,7 @@ class CarEnv():
             self.ego_trans_init.location = carla.Location(x = ego_config["spawn_point"][0],
                                                 y = ego_config["spawn_point"][1],
                                                 z = ego_config["spawn_point"][2])
-            wpt = self.map.get_waypoint(self.ego_trans_init.location, project_to_road=True)
+            wpt = self.map.get_waypoint(self.ego_trans_init.location, project_to_road=True, lane_type=carla.LaneType.Driving)
             self.ego_trans_init = wpt.transform
             self.ego_trans_init.location.z = ego_config["spawn_point"][2]
         
@@ -473,7 +473,7 @@ class CarEnv():
                 npc_tf = carla.Transform()
                 npc_tf.location = carla.Location(x=spawn_point[0], y=spawn_point[1], z=spawn_point[2])
                 
-                wpt = self.map.get_waypoint(npc_tf.location, project_to_road = True)
+                wpt = self.map.get_waypoint(npc_tf.location, project_to_road = True, lane_type=carla.LaneType.Driving)
                 npc_tf = wpt.transform
                 npc_tf.location.z = spawn_point[2]
 
@@ -483,7 +483,7 @@ class CarEnv():
                 npc_tf = carla.Transform()
                 npc_tf.location = carla.Location(x=spawn_point[0], y=spawn_point[1], z=spawn_point[2])
                 
-                wpt = self.map.get_waypoint(ego_location, project_to_road = True)
+                wpt = self.map.get_waypoint(ego_location, project_to_road = True, lane_type=carla.LaneType.Driving)
                 
                 relative_x = spawn_point[0]
                 wpt = wpt.next(relative_x)[0]
