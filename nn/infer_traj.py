@@ -21,7 +21,7 @@ import copy
 @dataclass
 class Args:
     # dataset_dir: str = '/Users/kaustabpal/work/iros_23/sparse_data/test/' # occ_map/' #'../carla_latest/' # 'data/dataset_beta/'
-    dataset_dir: str = '/Users/kaustabpal/work/10kdata/' # occ_map/' #'../carla_latest/' # 'data/dataset_beta/'
+    dataset_dir: str = '/Users/kaustabpal/Downloads/experiments_22-02-2023/NuroMPPI_2-1/' # occ_map/' #'../carla_latest/' # 'data/dataset_beta/'
     weights_dir: str = '../iros_23/weights/' 
     loss_dir: str = '../iros_23/loss/' 
     infer_dir: str = "../iros_23/infer_dir/"
@@ -60,11 +60,11 @@ def run():
     
     nn_time = []
     # torch.save(model.state_dict(), model_path)
-    for i in range(2483, len(occ_map_files)):
+    for i in range(30, len(occ_map_files)):
         t_1 = time.time()
         print(i)
         obs_pos = []
-        file_name = args.dataset_dir+"occ_map/" + "data_" + str(i).zfill(5) + ".pkl"
+        file_name = args.dataset_dir+"occ_map/" + "data_" + str(i).zfill(2) + ".pkl"
         # plt_save_file_name = plot_im_dir + "data_" + str(i)
         # mean_save_filename = args.dataset_dir+"mean_controls/" + "data_" + str(i) + ".npy"
         infer_file_name = args.infer_dir+args.exp_id +"/" + "data_" + str(i).zfill(5)
@@ -151,12 +151,13 @@ def run():
         plt.plot(obs_pos[:,0], obs_pos[:,1], 'k.')
             
         # for j in range(sampler.traj_N.shape[0]):
-        # plt.plot(nmppi.traj_N[:,:,0], sampler1.traj_N[:,:,1], '.b', markersize=1, alpha=0.1)
+        plt.plot(nmppi.traj_N[:,:,0], nmppi.traj_N[:,:,1], '.b', markersize=1, alpha=0.1)
         # plt.plot(sampler2.traj_N[-2,:,0], sampler2.traj_N[-2,:,1], 'orange', markersize=3,  label = "Ground Truth")
-        plt.plot(nmppi.traj_N[-2,:,0], nmppi.traj_N[-2,:,1], 'red', markersize=3, label = "Neuro-MPPI")
-        plt.plot(mppi.traj_N[-2,:,0], mppi.traj_N[-2,:,1], 'green', markersize=3, label = "MPPI")
-        plt.plot(gradcem.traj_N[-2,:,0].detach(), gradcem.traj_N[-2,:,1].detach(), 'blue', markersize=3, label = "GradCEM")
-        # plt.plot(sampler1.top_trajs[0,:,0], sampler1.top_trajs[0,:,1], 'green', markersize=2, label = "Best traj")
+        
+        # plt.plot(mppi.traj_N[-2,:,0], mppi.traj_N[-2,:,1], 'green', markersize=3, label = "MPPI")
+        # plt.plot(gradcem.traj_N[-2,:,0].detach(), gradcem.traj_N[-2,:,1].detach(), 'blue', markersize=3, label = "GradCEM")
+        plt.plot(nmppi.traj_N[-2,:,0], nmppi.traj_N[-2,:,1], 'red', markersize=3.5, label = "Neuro-MPPI")
+        plt.plot(nmppi.top_trajs[0,:,0], nmppi.top_trajs[0,:,1], 'green', markersize=2, label = "Best traj")
         # plt.plot(sampler2.top_trajs[0,:,0], sampler2.top_trajs[0,:,1], 'pink', markersize=2, label = "GT best traj")
         
         plt.ylim(-15,15)
@@ -168,7 +169,7 @@ def run():
         # plt.savefig(infer_file_name, dpi=500)
         plt.show()
         plt.clf()
-        quit()
+        # quit()
     nn_time = np.array(nn_time)
     print(np.mean(nn_time))
     np.save(args.time_dir+'nn_time', nn_time)

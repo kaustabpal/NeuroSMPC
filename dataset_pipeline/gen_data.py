@@ -18,9 +18,9 @@ torch.manual_seed(42)
 
 @dataclass
 class Args:
-    occ_map_dir: str = '/scratch/kaustab.pal/iros/sparse_data/occ_map/' # '/scratch/kaustab.pal/iros/dataset/occ_map/' 
-    mean_dir: str = '/scratch/kaustab.pal/iros/sparse_data/mean_controls/' # '/scratch/kaustab.pal/iros/dataset/mean_controls/'  
-    plot_im_dir: str = '/scratch/kaustab.pal/iros/sparse_data/plot_im/' # '/scratch/kaustab.pal/iros/dataset/plot_im/' 
+    occ_map_dir: str = '/Users/kaustabpal/Downloads/experiments_22-02-2023/NuroMPPI_2-1/occ_map/' # '/scratch/kaustab.pal/iros/dataset/occ_map/' 
+    mean_dir: str = '/Users/kaustabpal/Downloads/experiments_22-02-2023/NuroMPPI_2-1/mean_controls/' # '/scratch/kaustab.pal/iros/dataset/mean_controls/'  
+    plot_im_dir: str = '/Users/kaustabpal/Downloads/experiments_22-02-2023/NuroMPPI_2-1/plot_im/' # '/scratch/kaustab.pal/iros/dataset/plot_im/' 
     # val_split: float = 0.3
     # num_epochs: int = 500
     # seed: int = 12321
@@ -50,7 +50,7 @@ def run():
         t_1 = time.time()
         
         obs_pos = []
-        file_name = dataset_dir + "data_" + str(i).zfill(5) + ".pkl"
+        file_name = dataset_dir + "data_" + str(i).zfill(2) + ".pkl"
         plt_save_file_name = plot_im_dir + "data_" + str(i).zfill(5)
         mean_save_filename = mean_dir + "data_" + str(i).zfill(5)
         with open(file_name, "rb") as f:
@@ -116,7 +116,7 @@ def run():
         plt.title("Ego velocity: "+str(round(ego_speed,2)))
         # print(sampler.top_trajs[0,:,:2])
         plt.savefig(plt_save_file_name)
-        #plt.show()
+        # plt.show()
         plt.clf()
         # quit()
 
