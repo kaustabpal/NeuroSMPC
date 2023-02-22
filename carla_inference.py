@@ -40,7 +40,8 @@ def handler(signum, frame):
         os.makedirs(dataset_dir + "data", exist_ok=True)
         os.makedirs(dataset_dir + "planner", exist_ok=True)
         os.makedirs(dataset_dir + "run_info", exist_ok=True)
-
+        os.makedirs(dataset_dir + "god_view", exist_ok=True)
+        
         os.system('scp -r ' + temp_dir + "/* " + dataset_dir)
 
     print("Ok....exiting now")
@@ -61,6 +62,7 @@ def run():
     os.makedirs(temp_dir + "data", exist_ok=True)
     os.makedirs(temp_dir + "planner", exist_ok=True)
     os.makedirs(temp_dir + "run_info", exist_ok=True)
+    os.makedirs(temp_dir + "god_view", exist_ok=True)
 
     env = CarEnv('env_config.json')
     obs = env.reset()
@@ -128,6 +130,7 @@ def run():
         right_lane = env.right_lane_coords
         dyn_obs = env.dyn_obs_poses
         num_obs = len(env.dyn_obs_poses)
+        god_view = env.third_person_view
 
         data = {
             "obstable_array": obstable_array,
@@ -162,6 +165,9 @@ def run():
             file_name = temp_dir + "run_info/run_info.pkl"
             with open(file_name, "wb") as f:
                 pickle.dump(run_info, f)
+
+            file_name = temp_dir + "god_view/god_view_" + str(i).zfill(2) + ".jpg"
+            cv2.imwrite(file_name, god_view)
 
         pprint(planner.time_info)
 

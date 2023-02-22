@@ -18,8 +18,8 @@ import logging
 from carla_env.utils.custom_pid import PID
 from carla_env.utils.stanley_controller import Stanley
 
-from carla_env.utils.env_conf_parser import ConfigParser
- 
+from carla_env.utils.carla_utils import generate_target_waypoint_list_same_lane, get_controls
+
 class CarEnv():
     metadata = {'render.modes': ['human']}
 
@@ -41,7 +41,8 @@ class CarEnv():
         self.dummy = None
         self.lidar_sen = None
         self.semantic_lidar_sen = None
-
+        self.third_person_view = None
+        
         self.ego_pose = None
         self.ego_path = []
         self.frame = -1
@@ -120,6 +121,8 @@ class CarEnv():
         self.traffic_manager = None
         self._setup_traffic_manager()        
 
+        self.npcs = {}
+
         atexit.register(self.close)
 
     def _next_observation(self):
@@ -179,6 +182,8 @@ class CarEnv():
         self.ego.apply_control(carla.VehicleControl(
             throttle=float(throttle), steer=float(steer), brake=float(brake)))
 
+        self.move_npcs()
+
         # Tick the world
         self.world.tick()
 
@@ -226,7 +231,7 @@ class CarEnv():
         # Spawn NPCs
         self._spawn_npcs()
 
-        print("--setup dummy")
+        print("--setup 3person view")
         # Attach Dummy Camera
         if self.dummy is not None:
             self.dummy.destroy()
@@ -235,7 +240,7 @@ class CarEnv():
             carla.Location(x=-6, z=4), carla.Rotation(pitch=10.0))
         self.dummy = self.world.spawn_actor(
             dummy_bp, dummy_transform, attach_to=self.ego, attachment_type=carla.AttachmentType.SpringArm)
-        self.dummy.listen(lambda image: self.dummy_callback(image))
+        self.dummy.listen(lambda image: self.third_person_callback(image))
 
         print("--wait for sensors")
         # Wait for the sensors to be ready
@@ -428,9 +433,14 @@ class CarEnv():
         if len(self.sensor_data[sensor_name])>sensor_conf["history_length"]:
             self.sensor_data[sensor_name].pop(0)
 
-    def dummy_callback(self, data):
-        pass
+    def third_person_callback(self, image_data):
+        image_no = image_data.frame
+        
+        image = np.frombuffer(image_data.raw_data, dtype=np.dtype("uint8"))
+        image = np.reshape(image, (image_data.height, image_data.width, 4))
 
+        self.third_person_view = image
+        
 
     def _setup_traffic_manager(self):
         traffic_manager_config = self.config["traffic_manager"]
@@ -448,7 +458,7 @@ class CarEnv():
         ego_tf = self.ego_trans_init
         ego_location = ego_tf.location
                 
-        self.npcs = []
+        self.npcs = {}
         for i in range(len(npc_config)):
             npc_conf = npc_config[i]
 
@@ -520,9 +530,30 @@ class CarEnv():
                 # self.traffic_manager.set_desired_speed(npc, npc_conf["desired_speed"])
                 self.traffic_manager.vehicle_percentage_speed_difference(npc, npc_conf["speed_difference_percentage"])
 
-                self.npcs.append(npc)
+                self.npcs[npc_conf["id"]] = npc
         self.traffic_manager.set_synchronous_mode(True)
 
+
+    def move_npcs(self):
+        npcs = self.npcs
+        
+        npc_config = self.config["npc"]
+        for npc_conf in npc_config:
+            if npc_conf["control_type"] == "autopilot":
+                continue
+            elif npc_conf["control_type"] == "waypoint":
+                npc = npcs[npc_conf["id"]]
+                if not npc.is_alive:
+                    continue
+                target_speed = npc_conf["target_speed"]
+                wpt = self.map.get_waypoint(npc.get_location(), project_to_road = True, lane_type = carla.LaneType.Driving)
+
+                target_wpts = generate_target_waypoint_list_same_lane(wpt, distance_same_lane=10, step_distance=1)[0]
+
+                v, w = get_controls(npc, wpt, target_wpts, target_speed)
+
+                npc.set_target_velocity(v)
+                npc.set_target_angular_velocity(w)
 
     def generate_data(self, img_size, sensing_range, z_max):
         assert img_size[0] == img_size[1], "BEV should be square"
@@ -724,9 +755,9 @@ class CarEnv():
         
         npc_poses_wrt_ego = []
         
-        for i in range(len(self.npcs)):
+        for id in list(self.npcs.keys()):
             #   Obstacle traneformation matrix
-            npc = self.npcs[i]
+            npc = self.npcs[id]
             npc_tf = np.array(npc.get_transform().get_matrix())
 
             #   Transformation of obs wrt ego
@@ -741,9 +772,9 @@ class CarEnv():
                 rel_yaw = rel_yaw + 360.0
             rel_yaw = rel_yaw + 90.0
 
-            v = self.npcs[i].get_velocity()
+            v = self.npcs[id].get_velocity()
             obs_v = ((v.x)**2 + (v.y)**2)**0.5
-            obs_w = self.npcs[i].get_angular_velocity().z
+            obs_w = self.npcs[id].get_angular_velocity().z
 
             #   If obstacle distance less thatn range(of bev), store pose
             if (obs_wrt_ego[0, 3]**2 + obs_wrt_ego[1, 3]**2)**0.5 < obs_range:
