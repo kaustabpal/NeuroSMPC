@@ -43,9 +43,9 @@ def run():
 	# argParser.add_argument("-m", "--mean_dir", help="mean_controls_dir")
 	# args = argParser.parse_args()
 	# dataset_dir = "storm/"
-	dataset_dir = "/home/aditya/deb_data/carla_manual/02-18-2023_15:20:12/temp/storm/"#args.dataset_dir
-	plot_im_dir = "/home/aditya/deb_data/carla_manual/02-18-2023_15:20:12/plot_im/"#args.plot_im_dir
-	mean_dir = "/home/aditya/deb_data/carla_manual/02-18-2023_15:20:12/mean_controls/"#args.mean_dir
+	dataset_dir = "/home/aditya/deb_data/segments/storm/"#args.dataset_dir
+	plot_im_dir = "/home/aditya/deb_data/segments/plot_im/"#args.plot_im_dir
+	mean_dir = "/home/aditya/deb_data/segments/mean_controls/"#args.mean_dir
 	files = os.listdir(dataset_dir)
 	time_arr = np.linspace(0, 3.0, 31)
 	print(len(files)-1)
@@ -53,9 +53,9 @@ def run():
 		t_1 = time.time()
 		print(i)
 		obs_pos = []
-		file_name = dataset_dir + "data_" + str(i).zfill(0) + ".pkl"
-		plt_save_file_name = plot_im_dir + "data_" + str(i).zfill(0)
-		mean_save_filename = mean_dir + "data_" + str(i).zfill(0)
+		file_name = dataset_dir + "data_" + str(i).zfill(4) + ".pkl"
+		plt_save_file_name = plot_im_dir + "data_" + str(i).zfill(4)
+		mean_save_filename = mean_dir + "data_" + str(i).zfill(4)
 		with open(file_name, "rb") as f:
 			data = pickle.load(f)
 		obs = data['obstable_array'] # obstacle pos in euclidean space
@@ -77,8 +77,11 @@ def run():
 			y, x = dyn_obs[o][1], dyn_obs[o][0]
 			# x = (x - 256/2)*30/256
 			# y = (y - 256/2)*30/256
-
-			new_theta = dyn_obs[o][2] + np.deg2rad(dyn_obs[o][4])*time_arr
+			# print(dyn_obs[o])
+			rel_yaw = dyn_obs[o][2] - np.pi/2
+			rel_yaw = np.pi/2 - rel_yaw
+			# print(rel_yaw)
+			new_theta = rel_yaw + np.deg2rad(-dyn_obs[o][4])*time_arr
 			obs_path_x = y + dyn_obs[o][3]*time_arr*np.cos(new_theta)
 			obs_path_y = x + dyn_obs[o][3]*time_arr*np.sin(new_theta)
 			traj = np.vstack((obs_path_x, obs_path_y)).T
@@ -100,7 +103,6 @@ def run():
 		obs_pos_frenet = []
 		for i in range(len(dyn_obs)):
 			obs_traj = global_to_frenet(obs_poses[i], new_g_path, interpolated_g_path)
-			# print(a)
 			obs_pos_frenet.append(obs_traj)
 		
 		# print(left_lane)
@@ -115,25 +117,28 @@ def run():
 		# plt.scatter(new_g_path[:,0],new_g_path[:,1],color='blue', alpha=0.7)
 		# plt.scatter(left_lane_frenet[:,0],left_lane_frenet[:,1],color='red', alpha=0.7)
 		# plt.scatter(right_lane_frenet[:,0],right_lane_frenet[:,1],color='green', alpha=0.7)
-		obs_pos_frenet = []
-		nxobs = 0.0 + np.cos(np.pi/2)*time_arr
-		nyobs = 50.0 + 100.0*np.sin(np.pi/2)*time_arr
-		traj = np.vstack((nxobs, nyobs)).T
+		# obs_pos_frenet = []
+		# nxobs = 0.0 + np.cos(np.pi/2)*time_arr
+		# nyobs = 5.0 + 1.0*np.sin(np.pi/2)*time_arr
+		# traj = np.vstack((nxobs, nyobs)).T
+		# obs_pos_frenet.append(traj)
 
 		# nxobs = 3.5 + np.cos(np.pi/2)*time_arr
-		# nyobs = 5.0 + 0.0*np.sin(np.pi/2)*time_arr
+		# nyobs = 5.0 + 10.0*np.sin(np.pi/2)*time_arr
 		# traj = np.vstack((nxobs, nyobs)).T
-		obs_pos_frenet = traj.reshape(1, 31, 2)
-		print(obs_pos_frenet)
+		# # obs_pos_frenet = traj.reshape(1, 31, 2)
+		# obs_pos_frenet.append(traj)
+
+		# print(obs_pos_frenet)
 
 		for i in range(len(obs_pos_frenet)):
-			plt.scatter(obs_pos_frenet[i][:,0],obs_pos_frenet[i][:,1],color='black', alpha=0.7)
+			plt.scatter(obs_poses[i][:,0],obs_poses[i][:,1],color='black', alpha=0.7)
 
 		obs_pos_frenet = np.array(obs_pos_frenet)
 		# print(obs_pos_frenet[0])
 		# print(obs_pos_frenet.shape)
 
-		print(data["speed"])
+		# print(data["speed"])
 
 		sampler = Goal_Sampler(torch.tensor([0,0,np.deg2rad(ego_theta)]), 4.0, 0.0, obstacles=obs_pos_frenet)
 		sampler.left_lane_bound = np.median(left_lane_frenet[:, :1])
@@ -157,7 +162,7 @@ def run():
 		mean_controls = sampler.mean_action
 		mean_traj = sampler.traj_N[-2,:,:]
 		cov_controls = sampler.scale_tril
-		print(mean_controls)
+		# print(mean_controls)
 		
 		mean_controls[:,1] = frenet_to_global(mean_traj, new_g_path, interpolated_g_path, 0.1)
 		# print(mean_controls)
@@ -179,7 +184,8 @@ def run():
 		# print(obs_pos[:][:,0])
 		
 		plt.plot(obs_pos[:,0], obs_pos[:,1], 'k.')
-		plt.scatter(dyn_obs[:,1], dyn_obs[:,0], color='orange')
+		if len(obs_pos_frenet) > 0:
+			plt.scatter(dyn_obs[:,1], dyn_obs[:,0], color='orange')
 			
 		# for j in range(sampler.traj_N.shape[0]):
 		plt.plot(sampler.traj_N[:,:,0], sampler.traj_N[:,:,1], '.r', alpha=0.05)
@@ -191,10 +197,10 @@ def run():
 		# print(sampler.top_trajs[0,:,:2])
 		plt.savefig(plt_save_file_name)
 		plt.axis('equal')
-		# plt.pause(0.001)
-		plt.show()
+		plt.pause(0.001)
+		# plt.show()
 		plt.clf()
-		quit()
+		# quit()
 
 
 

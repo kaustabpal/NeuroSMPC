@@ -188,7 +188,7 @@ class Goal_Sampler:
         state = state + a@controls.float()*self.dt
         return state
     
-    def rollout(self, s_o = 1, s_s = 1, s_c=0, s_m = 0):
+    def rollout(self, s_o = 10, s_s = 1, s_a = 5, s_c=0, s_m = 0):
         # print(self.num_particles)
         # print(self.controls_N.shape[0])
         t_r = time.time()
@@ -200,6 +200,7 @@ class Goal_Sampler:
         self.in_balls_cost_N = torch.zeros((self.traj_N.shape[0]))
         self.collision_cost_N = torch.zeros((self.traj_N.shape[0]))
         self.ang_vel_cost_N = torch.zeros((self.controls_N.shape[0]))
+        self.lin_vel_cost_N = torch.zeros((self.controls_N.shape[0]))
         self.dist_to_mean_cost_N = 99*torch.ones((self.controls_N.shape[0]))
         self.center_line_cost_N = torch.zeros((self.controls_N.shape[0]))
         diag_dt = self.dt*torch.ones(self.horizon, self.horizon)
@@ -231,7 +232,9 @@ class Goal_Sampler:
             t.append(time.time() - t1)  
                         
             # angular velocity constraints
-            self.ang_vel_cost_N[i] = torch.sum(torch.diff(self.controls_N[i,:,1])**2) #torch.norm(self.controls_N[i,:,1])
+            self.ang_vel_cost_N[i] = torch.norm(self.controls_N[i,:,1]) #torch.sum(torch.diff(self.controls_N[i,:,1])**2) #torch.norm(self.controls_N[i,:,1])
+
+            self.lin_vel_cost_N[i] = torch.sum(torch.diff(self.controls_N[i,:,0])**2)
             
             self.dist_to_mean_cost_N[i] = torch.linalg.norm(self.controls_N[i,:,1] - self.controls_N[-2,:,1]) #torch.norm(self.controls_N[i,:,1])
             
@@ -245,16 +248,17 @@ class Goal_Sampler:
             # d_to_o = torch.linalg.norm(self.traj_N[i,:,:2].reshape(1, self.horizon+1, 2) - torch.tensor(self.obstacles,dtype=torch.float32), dim=2)
             # self.collision_cost_N[i] += torch.sum((d_to_o<threshold_dist).type(torch.float32))
 
-            d_to_o = 1/torch.linalg.norm(self.traj_N[i,:,:2].reshape(1, self.horizon+1, 2) - torch.tensor(self.obstacles,dtype=torch.float32), dim=2)
-            d_to_o = torch.clamp(d_to_o, 1/3.5, 10000.0)/(1/3.5)
-            # # d_to_o = torch.min(d_to_o, torch.tensor([1/3.5]))
-            self.collision_cost_N[i] = torch.sum(d_to_o)- (self.horizon + 1)
+            if self.obstacles.shape[0]>0:
+                d_to_o = 1/torch.linalg.norm(self.traj_N[i,:,:2].reshape(1, self.horizon+1, 2) - torch.tensor(self.obstacles,dtype=torch.float32), dim=2)
+                d_to_o = torch.clamp(d_to_o, 1/3.0, 10000.0)/(1/3.0)
+                # # d_to_o = torch.min(d_to_o, torch.tensor([1/3.5]))
+                self.collision_cost_N[i] = torch.sum(d_to_o)- (self.horizon + 1)
             # self.collision_cost_N[i] += torch.sum(d_to_o)
 
 
 
-            left_lane_cost = 0*1000*torch.ones(self.traj_N[i,self.traj_N[i,:,0]<self.left_lane_bound,0].shape)
-            right_lane_cost = 0*1000*torch.ones(self.traj_N[i,self.traj_N[i,:,0]>self.right_lane_bound,0].shape)
+            left_lane_cost = 1000*torch.ones(self.traj_N[i,self.traj_N[i,:,0]<self.left_lane_bound,0].shape)
+            right_lane_cost = 1000*torch.ones(self.traj_N[i,self.traj_N[i,:,0]>self.right_lane_bound,0].shape)
             self.left_lane_bound_cost_N[i] = torch.sum(left_lane_cost) 
             self.right_lane_bound_cost_N[i] = torch.sum(right_lane_cost) 
             
@@ -283,7 +287,6 @@ class Goal_Sampler:
         t = np.array(t)
         t_2 = np.array(t_2)
         t_3 = np.array(t_3)
-        print(self.collision_cost_N)
         # print(self.ang_vel_cost_N)
         # print(self.left_lane_bound_cost_N)
         # print(self.right_lane_bound_cost_N)
@@ -300,14 +303,12 @@ class Goal_Sampler:
             # else:
             #     self.goal_region_cost_N[i] = copy.deepcopy(dist)
                 
-        self.total_cost_N = s_s*self.ang_vel_cost_N + s_o*self.collision_cost_N + s_c*self.center_line_cost_N + \
+        self.total_cost_N = s_s*self.ang_vel_cost_N + s_a*self.lin_vel_cost_N + s_o*self.collision_cost_N + s_c*self.center_line_cost_N + \
             s_m*self.dist_to_mean_cost_N + self.left_lane_bound_cost_N + self.right_lane_bound_cost_N
         # print(self.total_cost_N)
         top_values, top_idx = torch.topk(self.total_cost_N, self.top_K, largest=False, sorted=True)
-        print("mean and best = ", self.ang_vel_cost_N[-2], self.ang_vel_cost_N[top_idx[0]])
         self.top_trajs = torch.index_select(self.traj_N, 0, top_idx)
         self.top_controls = torch.index_select(self.controls_N, 0, top_idx)
-        print()
         self.best_traj = copy.deepcopy(self.top_controls[0,:,:])
         top_cost = torch.index_select(self.total_cost_N, 0, top_idx)
         w = self._exp_util(top_cost)
@@ -339,8 +340,6 @@ class Goal_Sampler:
         self.mean_action = torch.clamp((1.0 - self.step_size_mean) * self.mean_action +\
             self.step_size_mean * new_mean, self.min_ctrl ,self.max_ctrl)
         
-        print("mean = ", self.mean_action)
-        
         delta = self.top_controls - self.mean_action.unsqueeze(0)
 
         weighted_delta = top_w * (delta ** 2).T
@@ -358,9 +357,7 @@ class Goal_Sampler:
         self.cov_action = self.init_cov_action
         # self.scale_tril = torch.sqrt(self.cov_action)
         # self.full_scale_tril = torch.diag(self.scale_tril)
-        for i in range(10):
-            print(i)
-            print()
+        for i in range(5):
             self.scale_tril = torch.sqrt(self.cov_action)
             self.full_scale_tril = torch.diag(self.scale_tril)
             t1 = time.time()
@@ -393,7 +390,7 @@ class Goal_Sampler:
         self.scale_tril = torch.sqrt(self.cov_action)
         self.full_scale_tril = torch.diag(self.scale_tril)
         self.sample_controls()
-        top_w, self.top_controls = self.rollout(s_o = 1, s_s = 1, s_c = 0, s_m = 0)   
+        top_w, self.top_controls = self.rollout(s_o = 1, s_s = 1, s_a = 1, s_c = 1, s_m = 0)   
     
     def get_vel(self, u):
         v1 = self.vl
