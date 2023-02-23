@@ -16,10 +16,10 @@ np.set_printoptions(suppress=True)
 class Goal_Sampler:
     def __init__(self, c_state, vl, wl, obstacles, num_particles = 1000):
         # agent info
-        self.device = "cpu" # torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.balls = []
         self.radius = 1.80
-        self.c_state = c_state # start state
+        self.c_state = c_state.to(self.device) # start state
         # self.g_state = g_state # goal state
         self.step_size_mean = 0.7
         self.step_size_cov = 0.2
@@ -40,7 +40,7 @@ class Goal_Sampler:
 
         # obstacle info
         self.obst_radius = 0.083
-        self.obstacles = obstacles
+        self.obstacles = obstacles.to(self.device)
         self.n_obst = 0
         
         # MPC params
@@ -75,7 +75,7 @@ class Goal_Sampler:
 
         # init_q = torch.tensor(self.c_state)
         self.init_action = torch.zeros((self.horizon, self.d_action)) + torch.tensor(self.init_q)
-        self.init_action.to(self.device)
+        self.init_action = self.init_action.to(self.device)
         self.init_mean = self.init_action 
         self.mean_action = self.init_mean.clone()
         self.best_traj = self.mean_action.clone()
@@ -100,7 +100,6 @@ class Goal_Sampler:
         self.centers = torch.ones(self.horizon+1,2)
         self.free_ball_radius = self.max_free_ball_radius*torch.ones(self.horizon+1,1)
 
-        self.device = "cpu" #torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     def bspline(self, c_arr, t_arr=None, n=30, degree=3):
         sample_device = c_arr.device
@@ -138,13 +137,12 @@ class Goal_Sampler:
         delta = self.samples
         z_seq = torch.zeros(1,self.horizon,self.d_action, device=self.device)
         delta = torch.cat((delta,z_seq),dim=0)
-        scaled_delta = torch.matmul(delta, self.full_scale_tril.float()).view(delta.shape[0],
+        scaled_delta = torch.matmul(delta, self.full_scale_tril).view(delta.shape[0],
                                                                     self.horizon,
                                                                     self.d_action) 
         
         
         act_seq = self.mean_action.unsqueeze(0).to(self.device) + scaled_delta.to(self.device)
-        
         # if(inference == False):
         #     act_seq = torch.cat((act_seq,torch.(1,self.horizon,self.d_action)),dim=0)
         # if(inference == True):
@@ -162,7 +160,7 @@ class Goal_Sampler:
         #     neg_act_seqs = neg_action.expand(self.num_neg_particles,-1,-1)
         #     append_acts = torch.cat((append_acts, self.null_act_seqs, neg_act_seqs),dim=0)
 
-        act_seq = torch.cat((act_seq, append_acts), dim=0)
+        act_seq = torch.cat((act_seq, append_acts.to(self.device)), dim=0)
         self.controls_N = act_seq
         
 
@@ -312,7 +310,7 @@ class Goal_Sampler:
         # self.scale_tril = torch.sqrt(self.cov_action)
         # self.full_scale_tril = torch.diag(self.scale_tril)
 
-        for i in range(2):
+        for i in range(1):
             self.scale_tril = torch.sqrt(self.cov_action)
             self.full_scale_tril = torch.diag(self.scale_tril)
             t1 = time.time()
@@ -340,7 +338,7 @@ class Goal_Sampler:
     
     def infer_traj(self):
         t1 = time.time()
-        self.init_cov_action = torch.tensor([0.09, 0.09])
+        self.init_cov_action = torch.tensor([0.09, 0.09], device=self.device)
         self.cov_action = self.init_cov_action
         self.scale_tril = torch.sqrt(self.cov_action)
         self.full_scale_tril = torch.diag(self.scale_tril)
