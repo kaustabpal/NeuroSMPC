@@ -154,36 +154,37 @@ class CarEnv():
         return observation
 
     def step(self, trajectory, target_speed):
-
+        throttle, brake, steer = 0
         self.frame += 1
-        
-        self.ego_tf = self.ego.get_transform()
-        self.ego_path.append(self.ego_tf)
-        self.ego_pose = np.array([self.ego_tf.location.x, self.ego_tf.location.y, self.ego_tf.location.z, self.ego_tf.rotation.yaw, self.ego_tf.rotation.pitch, self.ego_tf.rotation.roll])
+        if target_speed != -1:
+            
+            self.ego_tf = self.ego.get_transform()
+            self.ego_path.append(self.ego_tf)
+            self.ego_pose = np.array([self.ego_tf.location.x, self.ego_tf.location.y, self.ego_tf.location.z, self.ego_tf.rotation.yaw, self.ego_tf.rotation.pitch, self.ego_tf.rotation.roll])
 
-        vel_ego = self.ego.get_velocity()
-        self.ego_speed = np.linalg.norm(np.array([vel_ego.x, vel_ego.y]))
-        
-        
-        self.stanley.set_current_speed(self.ego_speed)
-        self.stanley.set_target_speed(target_speed)
+            vel_ego = self.ego.get_velocity()
+            self.ego_speed = np.linalg.norm(np.array([vel_ego.x, vel_ego.y]))
+            
+            
+            self.stanley.set_current_speed(self.ego_speed)
+            self.stanley.set_target_speed(target_speed)
 
-        try:
-            self.stanley.set_waypoints(trajectory)
-        except Exception as e:
-            print(e)
-            print("Trajectory : ", trajectory)
-            print("Velocity : ", np.round(target_speed,2))
-            # exit()
+            try:
+                self.stanley.set_waypoints(trajectory)
+            except Exception as e:
+                print(e)
+                print("Trajectory : ", trajectory)
+                print("Velocity : ", np.round(target_speed,2))
+                # exit()
 
-        action, ret_val = self.stanley.get_controls()
+            action, ret_val = self.stanley.get_controls()
 
-        throttle = action[0]
-        brake = action[1]
-        steer = action[2]      
+            throttle = action[0]
+            brake = action[1]
+            steer = action[2]      
 
-        self.ego.apply_control(carla.VehicleControl(
-            throttle=float(throttle), steer=float(steer), brake=float(brake)))
+            self.ego.apply_control(carla.VehicleControl(
+                throttle=float(throttle), steer=float(steer), brake=float(brake)))
 
         self.move_npcs()
 

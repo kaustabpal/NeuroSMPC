@@ -20,7 +20,7 @@ from pprint import pprint
 
 np.set_printoptions(precision=3, suppress=True)
 
-EXPT_NAME = "NuroMPPI_2-1"
+EXPT_NAME = "NuroMPPI_temporal_2-1"
 
 dataset_dir = "data/experiments/" + EXPT_NAME + "/"
 temp_dir = "data/temp/"
@@ -52,9 +52,11 @@ signal.signal(signal.SIGINT, handler)
 def run():
     # Setting up planner
     planner_type = EXPT_NAME.split("_")[0]
-    expt_ver = EXPT_NAME.split("_")[1]
+    expt_type = EXPT_NAME.split("_")[1]
+    expt_ver = EXPT_NAME.split("_")[2]
+
     print("Using planner: ", planner_type)
-    planner = LocalPlanner(planner=planner_type)
+    planner = LocalPlanner(planner=planner_type, expt_type = expt_type)
     
     os.system('rm -rf ' + temp_dir)
 
@@ -84,6 +86,7 @@ def run():
     compute_times = []
     collisions = []
 
+    temp_best_path = np.array([[0, 0] for i in range(100)])
     while True:
         print("Loop ", i)
         obstacle_array = env.obstacle_bev
@@ -96,19 +99,23 @@ def run():
         toc = time.time()
         compute_time = toc - tic
         compute_times.append(compute_time)
+        
+        if best_path is not None:
+            best_path = np.array(best_path)
+            best_controls = np.array(best_controls)
 
-        best_path = np.array(best_path)
-        best_controls = np.array(best_controls)
+            # swap first and second column of best_path
+            best_path[:,[0, 1]] = best_path[:,[1, 0]]
 
-        # swap first and second column of best_path
-        best_path[:,[0, 1]] = best_path[:,[1, 0]]
-
-        target_speed = best_controls[0,0]
-        ego_pose = env.ego_pose
-        ego_path.append(ego_pose)   # [x,y,z,yaw,pitch,roll]
-        target_velocities.append(target_speed)
-        ego_velocities.append(current_speed)
-
+            target_speed = best_controls[0,0]
+            ego_pose = env.ego_pose
+            ego_path.append(ego_pose)   # [x,y,z,yaw,pitch,roll]
+            target_velocities.append(target_speed)
+            ego_velocities.append(current_speed)
+        else:
+            best_path = temp_best_path
+            target_speed = -1
+        
         obs, reward, done, state, action = env.step(best_path[5:, :], target_speed=target_speed)
         env.render()
 

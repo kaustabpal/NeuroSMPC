@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 import torch
 
-from nn.model import Model1
+from nn.model import Model1, Model_Temporal
 from dataset_pipeline.goal_sampler_static_obs import Goal_Sampler
 from dataset_pipeline.grad_cem import GradCEM
 
@@ -17,7 +17,7 @@ from dataset_pipeline.frenet_transformations import global_traj, global_to_frene
 import os
 
 class LocalPlanner:
-    def __init__(self, planner="NuroMPPI") -> None:
+    def __init__(self, planner="NuroMPPI", expt_type = "tempora") -> None:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # self.device = "cpu"
 
@@ -27,7 +27,7 @@ class LocalPlanner:
         # Args
         self.seed = 12321
         self.weights_dir = "/scratch/parth.shah/deb/weights/"
-        self.exp_id = "exp1-1"
+        self.exp_id = "exp1"
 
         # Set seed
         torch.manual_seed(self.seed)
@@ -37,15 +37,27 @@ class LocalPlanner:
 
         self.planner_type = planner
 
+        self.expt_type = expt_type
+        if self.expt_type == "temporal":
+            self.obstacle_array_history = None
+
         self.model = None
         self.sampler = None
         if self.planner_type == "NuroMPPI":
-            # Load model
-            self.model = Model1()
-            self.model_weights = torch.load(self.weights_dir+"model_"+self.exp_id+".pt", map_location=torch.device(self.device))
-            self.model.load_state_dict(self.model_weights)
-            self.model.to(self.device)
-            self.model.eval()
+            if self.expt_type == "static":
+                # Load model
+                self.model = Model1()
+                self.model_weights = torch.load(self.weights_dir+"model_"+self.exp_id+".pt", map_location=torch.device(self.device))
+                self.model.load_state_dict(self.model_weights)
+                self.model.to(self.device)
+                self.model.eval()
+            else:
+                self.model = Model_Temporal()
+                self.model_weights = torch.load(self.weights_dir+"model_"+self.exp_id+"_temp.pt", map_location=torch.device(self.device))
+                self.model.load_state_dict(self.model_weights)
+                self.model.to(self.device)
+                self.model.eval()
+        
         # TODO :- find a way to not initialize everytime
         #   self.sampler = Goal_Sampler()
         # elif self.planner_type == "MMPI":
@@ -72,13 +84,101 @@ class LocalPlanner:
 
     def generate_path(self, obstacle_array, global_path, current_speed):
         print(self.planner_type)
-        if self.planner_type == "NuroMPPI":
-            return self.generate_path_nuromppi(obstacle_array, global_path, current_speed)
-        elif self.planner_type == "MPPI":
-            return self.generate_path_mppi(obstacle_array, global_path, current_speed)
-        elif self.planner_type == "GradCEM":
-            return self.generate_path_gcem(obstacle_array, global_path, current_speed)
+        if self.expt_type == "temporal":
+            if self.planner_type == "NuroMPPI":
+                return self.generate_path_nuromppi_dyn(obstacle_array, global_path, current_speed)
+        elif self.expt_type == "static":                
+            if self.planner_type == "NuroMPPI":
+                return self.generate_path_nuromppi(obstacle_array, global_path, current_speed)
+            elif self.planner_type == "MPPI":
+                return self.generate_path_mppi(obstacle_array, global_path, current_speed)
+            elif self.planner_type == "GradCEM":
+                return self.generate_path_gcem(obstacle_array, global_path, current_speed)
 
+
+    def generate_path_nuromppi_dyn(self, obstacle_array, global_path, current_speed):
+        tic_ = time.time()
+        tic = time.time()
+        ego_speed = current_speed
+
+        # Process global path
+        global_path_orig = np.copy(global_path)        
+
+        global_path[:,0] = -global_path[:,0] + 256 # global path points
+        global_path = global_path.astype(np.int32)
+        global_path = global_path[np.where((global_path[:, 0] < 256) & (global_path[:, 1] < 256) & (global_path[:, 0] >= 0) & (global_path[:, 1] >= 0) )]
+        
+        global_path_array = np.zeros((256, 256))
+        global_path_array[global_path[:,0], global_path[:,1]] = 255
+    
+        g_path = global_path_orig - [256/2,256/2] # global path points
+        g_path = g_path[:, [1,0]]*30/256
+
+        # Process occupancy map
+        obstacle_array = np.copy(obstacle_array)
+        if self.obstacle_array_history is None:
+            self.obstacle_array_history = np.array(obstacle_array)
+        else:
+            self.obstacle_array_history = np.dstack((obstacle_array, self.obstacle_array_history))
+
+        if self.obstacle_array_history.shape[2] >= 5:
+            self.obstacle_array_history = self.obstacle_array_history[:,:,:5]
+        else:
+            print("Not enough obstacle history - ", self.obstacle_array_history.shape[2])
+            return None, None
+
+        bev = np.dstack([self.obstacle_array_history, global_path_array])
+
+        print("BEV shape : ", bev.shape)
+
+        occupancy_map = torch.as_tensor(bev, dtype = self.dtype) # obstacle pos in euclidean space
+        # print("Occupancy map shape : ", occupancy_map.shape)
+        occupancy_map = torch.permute(occupancy_map, (2,0,1)) / 255.0 
+        
+        # Process obstacles
+        obstacle_positions = np.array(self.to_continuous(obstacle_array))
+        toc = time.time()
+        self.time_info["preprocess"] = toc-tic
+
+        tic = time.time()
+        with torch.no_grad():
+            mean_action = self.model(occupancy_map.unsqueeze(0).to(self.device)).reshape(30,2) # NN output reshaped        
+        toc = time.time()
+        self.time_info["model"] = toc-tic
+        
+        tic = time.time()
+        mean_action_cpu = mean_action.detach().cpu()
+        toc = time.time()
+        self.time_info["midprocess"] = toc-tic
+
+        #Finding the best trajectory
+        tic = time.time()
+        sampler = Goal_Sampler(torch.tensor([0, 0, np.deg2rad(90)]), 4.13, 0, obstacles=obstacle_positions, num_particles = 100)
+        sampler.num_particles = 100
+        sampler.mean_action = mean_action_cpu
+        sampler.infer_traj()
+        toc = time.time()
+        self.time_info["sampler"] = toc-tic
+        
+        tic = time.time()
+        best_controls = sampler.top_controls[0,:,:] # contains the best v and w
+        best_traj = sampler.top_trajs[0,:,:] # contains the best x, y and theta
+
+        best_traj = best_traj.detach().cpu().numpy()
+        best_controls = best_controls.detach().cpu().numpy()
+        toc = time.time()
+        self.time_info["postprocess"] = toc-tic
+
+        tic = time.time()
+        if self.visualize or self.save:
+            self.plotter(obstacle_positions, g_path, sampler, 2.5, current_speed)
+        toc = time.time()
+        self.time_info["plot"] = toc-tic
+
+        toc_ = time.time()
+        self.time_info["total"] = toc_-tic_
+        return best_traj, best_controls
+    
 
     def generate_path_nuromppi(self, obstacle_array, global_path, current_speed):
         tic_ = time.time()
