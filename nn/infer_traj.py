@@ -18,10 +18,11 @@ import copy
 
 @dataclass
 class Args:
-    dataset_dir: str = '../carla_latest/' # 'data/dataset_beta/'
+    dataset_dir: str = '/Users/kaustabpal/work/iros_23/sparse_data/' # occ_map/' #'../carla_latest/' # 'data/dataset_beta/'
     weights_dir: str = '../iros_23/weights/' 
     loss_dir: str = '../iros_23/loss/' 
     infer_dir: str = "../iros_23/infer_dir/"
+    time_dir: str = "../iros_23/time_dir/"
     val_split: float = 0.3
     num_epochs: int = 1000
     seed: int = 12321
@@ -53,7 +54,7 @@ def run():
     # print(len(files))
     # quit()
     
-
+    nn_time = []
     # torch.save(model.state_dict(), model_path)
     for i in range(len(occ_map_files)):
         t_1 = time.time()
@@ -86,22 +87,28 @@ def run():
         g_path = g_path[:, [1,0]]*30/256
         
         obs_pos = np.array(to_continuous(obs_array))
-
+        
         sampler1 = Goal_Sampler(torch.tensor([0,0,np.deg2rad(90)]), 4.13, 0, obstacles=obs_pos, num_particles = 100)
-        sampler2 = Goal_Sampler(torch.tensor([0,0,np.deg2rad(90)]), 4.13, 0, obstacles=obs_pos, num_particles = 100)
-        sampler2.mean_action = mean_controls_gt
-        # sampler1.num_particles = 1
-        # sampler2.num_particles = 1
         t1 = time.time()
         model.eval()
         with torch.no_grad():
             sampler1.mean_action = model(occ_map.unsqueeze(0)).reshape(30,2) # NN output reshaped
-        t1 = time.time()
         # print(sampler1.mean_action)
         # quit()
         sampler1.infer_traj()
-        print("Inference time: ", time.time()-t1)
+        t2 = time.time()
+        nn_time.append(t2-t1)
+        print("Sampler 1 Inference time: ", t2-t1)
+
+        t1 = time.time()
+        sampler2 = Goal_Sampler(torch.tensor([0,0,np.deg2rad(90)]), 4.13, 0, obstacles=obs_pos, num_particles = 100)
+        sampler2.mean_action = mean_controls_gt
         sampler2.infer_traj()
+        print("Sampler 2 Inference time: ", time.time()-t1)
+        # sampler1.num_particles = 1
+        # sampler2.num_particles = 1
+        
+        
         print("Total time: ", time.time()-t_1)
         # quit()
 
@@ -119,7 +126,8 @@ def run():
         plt.plot(sampler1.traj_N[:,:,0], sampler1.traj_N[:,:,1], '.b', markersize=1, alpha=0.04)
         plt.plot(sampler2.traj_N[-2,:,0], sampler2.traj_N[-2,:,1], 'orange', markersize=3,  label = "Ground Truth")
         plt.plot(sampler1.traj_N[-2,:,0], sampler1.traj_N[-2,:,1], 'red', markersize=3, label = "Predicted")
-        plt.plot(sampler1.top_trajs[0,:,0], sampler1.top_trajs[0,:,1], 'lime', markersize=2, label = "best traj")
+        plt.plot(sampler1.top_trajs[0,:,0], sampler1.top_trajs[0,:,1], 'lime', markersize=2, label = "NN best traj")
+        plt.plot(sampler2.top_trajs[0,:,0], sampler2.top_trajs[0,:,1], 'pink', markersize=2, label = "GT best traj")
         
         plt.ylim(-15,15)
         plt.xlim(-15,15)
@@ -129,6 +137,9 @@ def run():
         # plt.show()
         plt.clf()
         # quit()
+    nn_time = np.array(nn_time)
+    print(np.mean(nn_time))
+    np.save(args.time_dir+'nn_time', nn_time)
 
 
 

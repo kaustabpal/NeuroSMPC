@@ -1,6 +1,6 @@
-from nn.dataset import Im2ControlsDataset
+from nn.dataset import Im2ControlsDataset_Temporal
 from datetime import datetime
-from nn.model import Model1
+from nn.model import Model_Temporal
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -17,13 +17,14 @@ import os
 
 @dataclass
 class Args:
-    dataset_dir: str = '/home2/kaustab.pal/dataset/' #'../iros_23/dataset/' #'/scratch/kaustab.pal/iros_23/dataset/' # 'data/dataset_beta/'
-    weights_dir: str = '/scratch/kaustab.pal/iros_23/weights/' #'../iros_23/weights/' #'/scratch/kaustab.pal/iros_23/weights/' 
-    loss_dir: str = '/scratch/kaustab.pal/iros_23/loss/'  #'../iros_23/loss/' #'/scratch/kaustab.pal/iros_23/loss/' 
+    dataset_dir: str = 'data/carla_dyn_obs_data/' #'../iros_23/dataset/' #'/scratch/kaustab.pal/iros_23/dataset/' # 'data/dataset_beta/'
+    weights_dir: str = 'data/weights/' #'../iros_23/weights/' #'/scratch/kaustab.pal/iros_23/weights/' 
+    loss_dir: str = 'data/loss/'  #'../iros_23/loss/' #'/scratch/kaustab.pal/iros_23/loss/' 
     val_split: float = 0.3
     num_epochs: int = 500
     seed: int = 12321
-    exp_id: str = 'exp2'
+    past_frames: int = 5
+    exp_id: str = 'exp1_temp'
 args = tyro.cli(Args)
 
 
@@ -35,7 +36,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Device: ",device)
     ### Datset Setup ####
-    dataset = Im2ControlsDataset(dataset_dir=args.dataset_dir)
+    dataset = Im2ControlsDataset_Temporal(dataset_dir=args.dataset_dir, past_frames=args.past_frames)
     total_size = len(dataset)
     test_size = int(total_size * 0.0)
     val_size = int(total_size * args.val_split)
@@ -53,7 +54,7 @@ def main():
     num_epochs = args.num_epochs #10 #500
     save_step = 100
 
-    model = Model1().to(device)
+    model = Model_Temporal(past_frames=args.past_frames).to(device)
     params = list(model.parameters())
     criterion = nn.MSELoss()
     #optimizer = torch.optim.Adam(params, lr=learning_rate)
