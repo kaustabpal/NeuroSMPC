@@ -18,9 +18,9 @@ torch.manual_seed(42)
 
 @dataclass
 class Args:
-    occ_map_dir: str = '/Users/kaustabpal/Downloads/experiments_22-02-2023/NuroMPPI_2-1/occ_map/' # '/scratch/kaustab.pal/iros/dataset/occ_map/' 
-    mean_dir: str = '/Users/kaustabpal/Downloads/experiments_22-02-2023/NuroMPPI_2-1/mean_controls/' # '/scratch/kaustab.pal/iros/dataset/mean_controls/'  
-    plot_im_dir: str = '/Users/kaustabpal/Downloads/experiments_22-02-2023/NuroMPPI_2-1/plot_im/' # '/scratch/kaustab.pal/iros/dataset/plot_im/' 
+    occ_map_dir: str = '/Users/kaustabpal/work/iros_23/sparse_data/train/occ_map/' # '/scratch/kaustab.pal/iros/dataset/occ_map/' 
+    mean_dir: str = '/Users/kaustabpal/work/iros_23/sparse_data/train/mean_controls/' # '/scratch/kaustab.pal/iros/dataset/mean_controls/'  
+    plot_im_dir: str = '/Users/kaustabpal/work/iros_23/sparse_data/train/plot_im/' # '/scratch/kaustab.pal/iros/dataset/plot_im/' 
     # val_split: float = 0.3
     # num_epochs: int = 500
     # seed: int = 12321
@@ -50,9 +50,9 @@ def run():
         t_1 = time.time()
         
         obs_pos = []
-        file_name = dataset_dir + "data_" + str(i).zfill(2) + ".pkl"
-        plt_save_file_name = plot_im_dir + "data_" + str(i).zfill(5)
-        mean_save_filename = mean_dir + "data_" + str(i).zfill(5)
+        file_name = dataset_dir + "data_" + str(i+1938).zfill(5) + ".pkl"
+        plt_save_file_name = plot_im_dir + "data_" + str(i+1938).zfill(5)
+        mean_save_filename = mean_dir + "data_" + str(i+1938).zfill(5)
         with open(file_name, "rb") as f:
             data = pickle.load(f)
             

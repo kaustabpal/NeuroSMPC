@@ -14,7 +14,7 @@ import scipy.interpolate as si
 np.set_printoptions(suppress=True)
 
 class Goal_Sampler:
-    def __init__(self, c_state, vl, wl, obstacles, num_particles = 500):
+    def __init__(self, c_state, vl, wl, obstacles, num_particles = 1000):
         # agent info
         self.device = "cpu" # torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.balls = []
@@ -180,7 +180,7 @@ class Goal_Sampler:
         return state
     
 
-    def rollout(self, s_o = 10, s_s = 1, s_c = 1, s_m = 0):
+    def rollout(self, s_o = 2, s_s = 1, s_c = 0.1, s_m = 0):
         # print(self.num_particles)
         # print(self.controls_N.shape[0])
         t_r = time.time()
@@ -223,8 +223,8 @@ class Goal_Sampler:
             t.append(time.time() - t1)  
                         
             # angular velocity constraints
-            self.ang_vel_cost_N1[i] = torch.norm(self.controls_N[i,:,1]) 
-            # self.ang_vel_cost_N2[i] = torch.sum(torch.diff(self.controls_N[i,:,1])**2)
+            # self.ang_vel_cost_N1[i] = torch.norm(self.controls_N[i,:,1]) 
+            self.ang_vel_cost_N2[i] = torch.sum(torch.diff(self.controls_N[i,:,1])**2)
             self.dist_to_mean_cost_N[i] = torch.linalg.norm(self.controls_N[i,:,1] - self.controls_N[-2,:,1]) #torch.norm(self.controls_N[i,:,1])
             
             # center-line cost
@@ -312,7 +312,7 @@ class Goal_Sampler:
         # self.scale_tril = torch.sqrt(self.cov_action)
         # self.full_scale_tril = torch.diag(self.scale_tril)
 
-        for i in range(3):
+        for i in range(2):
             self.scale_tril = torch.sqrt(self.cov_action)
             self.full_scale_tril = torch.diag(self.scale_tril)
             t1 = time.time()
