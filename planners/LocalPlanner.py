@@ -157,7 +157,8 @@ class LocalPlanner:
             obs_path_y = x + dyn_obs[o][3]*self.time_arr*np.sin(new_theta)
             traj = np.vstack((obs_path_x, obs_path_y)).T
             obs_poses.append(traj)
-        obstacle_positions = np.array(obs_poses)
+        obstacle_positions_dyn = np.array(obs_poses)
+        obstacle_positions = np.array(self.to_continuous(obstacle_array))
         toc = time.time()
         self.time_info["preprocess"] = toc-tic
 
@@ -174,7 +175,7 @@ class LocalPlanner:
 
         #Finding the best trajectory
         tic = time.time()
-        sampler = Goal_Sampler_Dyn(torch.tensor([0, 0, np.deg2rad(90)]), 4.13, 0, obstacles=obstacle_positions, num_particles = 100)
+        sampler = Goal_Sampler_Dyn(torch.tensor([0, 0, np.deg2rad(90)]), 4.13, 0, obstacles=obstacle_positions_dyn, num_particles = 100)
         sampler.num_particles = 100
         sampler.mean_action = mean_action_cpu
         sampler.infer_traj()
