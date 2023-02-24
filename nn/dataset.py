@@ -114,7 +114,7 @@ class Im2ControlsDataset_Temporal(Dataset):
 
         occ_map = torch.as_tensor(bev, dtype = dtype)
         occ_map = torch.permute(occ_map, (2,0,1)) / 255.0 # Use better normalization
-        controls_file = 'data_'+str(idx).zfill(2)+'.npy'
+        controls_file = 'data_'+str(idx + self.past_frames - 1).zfill(2)+'.npy'
         controls = torch.as_tensor(np.load(self.controls_dir+controls_file), dtype = dtype).flatten()
         sample = {'occ_map': occ_map, 'controls': controls}
 
