@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import torch
 
 from nn.model import Model1, Model_Temporal
-from dataset_pipeline.goal_sampler_dyn_obs_lane_change import Goal_Sampler as GoalSampler_Dyn
+from dataset_pipeline.goal_sampler_dyn_obs_lane_change import Goal_Sampler as Goal_Sampler_Dyn
 from dataset_pipeline.goal_sampler_static_obs import Goal_Sampler
 from dataset_pipeline.grad_cem import GradCEM
 
@@ -165,7 +165,7 @@ class LocalPlanner:
 
         #Finding the best trajectory
         tic = time.time()
-        sampler = Goal_Sampler(torch.tensor([0, 0, np.deg2rad(90)]), 4.13, 0, obstacles=obstacle_positions, num_particles = 100)
+        sampler = Goal_Sampler_Dyn(torch.tensor([0, 0, np.deg2rad(90)]), 4.13, 0, obstacles=obstacle_positions, num_particles = 100)
         sampler.num_particles = 100
         sampler.mean_action = mean_action_cpu
         sampler.infer_traj()
