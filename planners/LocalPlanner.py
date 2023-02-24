@@ -73,6 +73,7 @@ class LocalPlanner:
             plt.ion()
         
         self.time_info = {}
+        self.time_arr = np.linspace(0, 3.0, 31)
 
     def to_continuous(self, obs):
         obs_pos = []    
@@ -137,7 +138,17 @@ class LocalPlanner:
         occupancy_map = torch.permute(occupancy_map, (2,0,1)) / 255.0 
         
         # Process obstacles
-        obstacle_positions = np.array(self.to_continuous(obstacle_array))
+        obs_poses = []
+        for o in range(len(dyn_obs)):
+            y, x = dyn_obs[o][1], dyn_obs[o][0]
+            rel_yaw = dyn_obs[o][2] - np.pi/2
+            rel_yaw = np.pi/2 - rel_yaw
+            new_theta = rel_yaw + np.deg2rad(-dyn_obs[o][4])*self.time_arr
+            obs_path_x = y + dyn_obs[o][3]*self.time_arr*np.cos(new_theta)
+            obs_path_y = x + dyn_obs[o][3]*self.time_arr*np.sin(new_theta)
+            traj = np.vstack((obs_path_x, obs_path_y)).T
+            obs_poses.append(traj)
+        obstacle_positions = np.array(obs_poses)
         toc = time.time()
         self.time_info["preprocess"] = toc-tic
 
