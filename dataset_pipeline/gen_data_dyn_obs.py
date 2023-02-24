@@ -141,8 +141,8 @@ def run():
 		# print(data["speed"])
 
 		sampler = Goal_Sampler(torch.tensor([0,0,np.deg2rad(ego_theta)]), 4.0, 0.0, obstacles=obs_pos_frenet)
-		sampler.left_lane_bound = np.median(left_lane_frenet[:, :1])+2.5
-		sampler.right_lane_bound = np.median(right_lane_frenet[:, :1])-2.5
+		sampler.left_lane_bound = np.median(left_lane_frenet[:, :1])
+		sampler.right_lane_bound = np.median(right_lane_frenet[:, :1])
 		# sampler.initialize()
 
 		t1 = time.time()
