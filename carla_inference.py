@@ -20,7 +20,7 @@ from pprint import pprint
 
 np.set_printoptions(precision=3, suppress=True)
 
-EXPT_NAME = "NuroMPPI_temporal_2-1"
+EXPT_NAME = "NuroMPPI_temporal_4-1"
 
 dataset_dir = "data/experiments/" + EXPT_NAME + "/"
 temp_dir = "data/temp/"
@@ -168,17 +168,17 @@ def run():
             with open(file_name, "wb") as f:
                 pickle.dump(data, f)
 
-            file_name = temp_dir + "bev/bev_" + str(i).zfill(2) + ".jpg"
+            file_name = temp_dir + "bev/bev_" + str(i).zfill(2) + ".png"
             cv2.imwrite(file_name, bev)
 
-            file_name = temp_dir + "planner/plot_" + str(i).zfill(2) + ".jpg"
+            file_name = temp_dir + "planner/plot_" + str(i).zfill(2) + ".png"
             planner.save_plot(file_name)
 
             file_name = temp_dir + "run_info/run_info.pkl"
             with open(file_name, "wb") as f:
                 pickle.dump(run_info, f)
 
-            file_name = temp_dir + "god_view/god_view_" + str(i).zfill(2) + ".jpg"
+            file_name = temp_dir + "god_view/god_view_" + str(i).zfill(2) + ".png"
             cv2.imwrite(file_name, god_view)
 
         pprint(planner.time_info)

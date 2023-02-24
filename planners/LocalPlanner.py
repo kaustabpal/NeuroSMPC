@@ -18,7 +18,7 @@ from dataset_pipeline.frenet_transformations import global_traj, global_to_frene
 import os
 
 class LocalPlanner:
-    def __init__(self, planner="NuroMPPI", expt_type = "tempora") -> None:
+    def __init__(self, planner="NuroMPPI", expt_type = "temporal") -> None:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # self.device = "cpu"
 
@@ -27,8 +27,8 @@ class LocalPlanner:
 
         # Args
         self.seed = 12321
-        self.weights_dir = "/scratch/parth.shah/deb/weights/"
-        self.exp_id = "exp1"
+        self.weights_dir = "data/weights/"
+        self.exp_id = "dyn1"
 
         # Set seed
         torch.manual_seed(self.seed)
@@ -42,6 +42,8 @@ class LocalPlanner:
         if self.expt_type == "temporal":
             self.obstacle_array_history = None
 
+        self.temporal_hist_len = 5
+
         self.model = None
         self.sampler = None
         if self.planner_type == "NuroMPPI":
@@ -53,7 +55,7 @@ class LocalPlanner:
                 self.model.to(self.device)
                 self.model.eval()
             else:
-                self.model = Model_Temporal()
+                self.model = Model_Temporal(self.temporal_hist_len)
                 self.model_weights = torch.load(self.weights_dir+"model_"+self.exp_id+"_temp.pt", map_location=torch.device(self.device))
                 self.model.load_state_dict(self.model_weights)
                 self.model.to(self.device)
@@ -123,13 +125,20 @@ class LocalPlanner:
         else:
             self.obstacle_array_history = np.dstack((obstacle_array, self.obstacle_array_history))
 
-        if self.obstacle_array_history.shape[2] >= 5:
-            self.obstacle_array_history = self.obstacle_array_history[:,:,:5]
+        print(self.obstacle_array_history.shape, len(self.obstacle_array_history.shape))
+        if len(self.obstacle_array_history.shape) == 2:
+            self.obstacle_array_history = self.obstacle_array_history.reshape([self.obstacle_array_history.shape[0], self.obstacle_array_history.shape[1], 1])
+
+        print(self.obstacle_array_history.shape, len(self.obstacle_array_history.shape))
+
+        if self.obstacle_array_history.shape[2] >= self.temporal_hist_len:
+            self.obstacle_array_history = self.obstacle_array_history[:,:,:self.temporal_hist_len]
         else:
             print("Not enough obstacle history - ", self.obstacle_array_history.shape[2])
             return None, None, -1
-
+        
         bev = np.dstack([self.obstacle_array_history, global_path_array])
+
 
         print("BEV shape : ", bev.shape)
 

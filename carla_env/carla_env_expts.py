@@ -154,7 +154,7 @@ class CarEnv():
         return observation
 
     def step(self, trajectory, target_speed):
-        throttle, brake, steer = 0
+        throttle, brake, steer = 0, 0, 0
         self.frame += 1
         if target_speed != -1:
             
