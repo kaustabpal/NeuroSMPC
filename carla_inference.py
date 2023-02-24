@@ -95,12 +95,12 @@ def run():
         bev = env.bev
         
         tic = time.time()
-        best_path, best_controls = planner.generate_path(obstacle_array, global_path, current_speed)
+        best_path, best_controls, status = planner.generate_path(obstacle_array, global_path, current_speed)
         toc = time.time()
         compute_time = toc - tic
         compute_times.append(compute_time)
         
-        if best_path is not None:
+        if status != -1:
             best_path = np.array(best_path)
             best_controls = np.array(best_controls)
 
@@ -112,11 +112,13 @@ def run():
             ego_path.append(ego_pose)   # [x,y,z,yaw,pitch,roll]
             target_velocities.append(target_speed)
             ego_velocities.append(current_speed)
+        
+            best_path = best_path[5:, :]    
         else:
-            best_path = temp_best_path
+            best_path = None
             target_speed = -1
         
-        obs, reward, done, state, action = env.step(best_path[5:, :], target_speed=target_speed)
+        obs, reward, done, state, action = env.step(best_path, target_speed=target_speed)
         env.render()
 
         controls.append(action)

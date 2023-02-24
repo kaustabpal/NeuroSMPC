@@ -125,7 +125,7 @@ class LocalPlanner:
             self.obstacle_array_history = self.obstacle_array_history[:,:,:5]
         else:
             print("Not enough obstacle history - ", self.obstacle_array_history.shape[2])
-            return None, None
+            return None, None, -1
 
         bev = np.dstack([self.obstacle_array_history, global_path_array])
 
@@ -177,7 +177,7 @@ class LocalPlanner:
 
         toc_ = time.time()
         self.time_info["total"] = toc_-tic_
-        return best_traj, best_controls
+        return best_traj, best_controls, 1
     
 
     def generate_path_nuromppi(self, obstacle_array, global_path, current_speed):
@@ -250,7 +250,7 @@ class LocalPlanner:
 
         toc_ = time.time()
         self.time_info["total"] = toc_-tic_
-        return best_traj, best_controls
+        return best_traj, best_controls, 1
     
     def generate_path_mppi(self, obstacle_array, global_path, current_speed):
         tic_ = time.time()
@@ -312,7 +312,7 @@ class LocalPlanner:
 
         toc_ = time.time()
         self.time_info["total"] = toc_-tic_
-        return best_traj, best_controls
+        return best_traj, best_controls, 1
 
     def generate_path_gcem(self, obstacle_array, global_path, current_speed):
         tic_ = time.time()
@@ -380,7 +380,7 @@ class LocalPlanner:
 
         toc_ = time.time()
         self.time_info["total"] = toc_-tic_
-        return best_traj, best_controls
+        return best_traj, best_controls, 1
 
     def plotter(self, obstacle_positions, global_path, sampler, ego_radius, current_speed, filename = None):
         # Clear plot
