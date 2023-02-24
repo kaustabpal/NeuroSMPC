@@ -1,6 +1,6 @@
 import torch
 # from goal_sampler_static_obs import Goal_Sampler
-from goal_sampler_static_obs_lane_change import Goal_Sampler
+from dataset_pipeline.goal_sampler_dyn_obs_lane_change import Goal_Sampler
 from matplotlib import pyplot as plt
 from matplotlib import pyplot as plt
 import numpy as np
