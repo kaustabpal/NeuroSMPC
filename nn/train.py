@@ -17,13 +17,13 @@ import os
 
 @dataclass
 class Args:
-    dataset_dir: str = '/home2/kaustab.pal/dataset/' #'../iros_23/dataset/' #'/scratch/kaustab.pal/iros_23/dataset/' # 'data/dataset_beta/'
+    dataset_dir: str = '/scratch/kaustab.pal/iros_23/dataset/train/' #'../iros_23/dataset/' #'/scratch/kaustab.pal/iros_23/dataset/' # 'data/dataset_beta/'
     weights_dir: str = '/scratch/kaustab.pal/iros_23/weights/' #'../iros_23/weights/' #'/scratch/kaustab.pal/iros_23/weights/' 
     loss_dir: str = '/scratch/kaustab.pal/iros_23/loss/'  #'../iros_23/loss/' #'/scratch/kaustab.pal/iros_23/loss/' 
     val_split: float = 0.3
     num_epochs: int = 500
     seed: int = 12321
-    exp_id: str = 'relu6'
+    exp_id: str = 'exp5'
 args = tyro.cli(Args)
 
 
@@ -37,6 +37,7 @@ def main():
     ### Datset Setup ####
     dataset = Im2ControlsDataset(dataset_dir=args.dataset_dir)
     total_size = len(dataset)
+    print("Dataset size: ", total_size)
     test_size = int(total_size * 0.0)
     val_size = int(total_size * args.val_split)
     train_size = total_size - test_size - val_size
@@ -56,8 +57,8 @@ def main():
     model = Model1().to(device)
     params = list(model.parameters())
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(params, lr=learning_rate)
-    #optimizer = Lion(model.parameters(), lr = learning_rate)
+    #optimizer = torch.optim.Adam(params, lr=learning_rate)
+    optimizer = Lion(model.parameters(), lr = learning_rate)
     scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.33, patience=10, threshold=0.01, verbose=True)
     #scheduler = CosineAnnealingLR(optimizer,
     #                            T_max = 400, # Maximum number of iterations.
