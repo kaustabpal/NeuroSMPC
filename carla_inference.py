@@ -93,9 +93,10 @@ def run():
         global_path = env.next_g_path
         current_speed = env.ego_speed
         bev = env.bev
+        dyn_obs = env.dyn_obs_poses
         
         tic = time.time()
-        best_path, best_controls, status = planner.generate_path(obstacle_array, global_path, current_speed)
+        best_path, best_controls, status = planner.generate_path(obstacle_array, dyn_obs, global_path, current_speed)
         toc = time.time()
         compute_time = toc - tic
         compute_times.append(compute_time)

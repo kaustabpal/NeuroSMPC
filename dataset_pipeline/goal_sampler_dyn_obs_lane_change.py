@@ -188,7 +188,7 @@ class Goal_Sampler:
         state = state + a@controls.float()*self.dt
         return state
     
-    def rollout(self, s_o = 10, s_s = 1, s_a = 5, s_c=0, s_m = 0):
+    def rollout(self, s_o = 10, s_s = 1, s_a = 5, s_c=0, s_m = 0, s_l = 1000):
         # print(self.num_particles)
         # print(self.controls_N.shape[0])
         t_r = time.time()
@@ -257,8 +257,8 @@ class Goal_Sampler:
 
 
 
-            left_lane_cost = 1000*torch.ones(self.traj_N[i,self.traj_N[i,:,0]<self.left_lane_bound,0].shape)
-            right_lane_cost = 1000*torch.ones(self.traj_N[i,self.traj_N[i,:,0]>self.right_lane_bound,0].shape)
+            left_lane_cost = s_l*torch.ones(self.traj_N[i,self.traj_N[i,:,0]<self.left_lane_bound,0].shape)
+            right_lane_cost = s_l*torch.ones(self.traj_N[i,self.traj_N[i,:,0]>self.right_lane_bound,0].shape)
             self.left_lane_bound_cost_N[i] = torch.sum(left_lane_cost) 
             self.right_lane_bound_cost_N[i] = torch.sum(right_lane_cost) 
             
@@ -390,7 +390,7 @@ class Goal_Sampler:
         self.scale_tril = torch.sqrt(self.cov_action)
         self.full_scale_tril = torch.diag(self.scale_tril)
         self.sample_controls()
-        top_w, self.top_controls = self.rollout()   
+        top_w, self.top_controls = self.rollout(s_m=1, s_l=0)   
     
     def get_vel(self, u):
         v1 = self.vl

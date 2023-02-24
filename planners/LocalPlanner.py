@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import torch
 
 from nn.model import Model1, Model_Temporal
+from dataset_pipeline.goal_sampler_dyn_obs_lane_change import Goal_Sampler as GoalSampler_Dyn
 from dataset_pipeline.goal_sampler_static_obs import Goal_Sampler
 from dataset_pipeline.grad_cem import GradCEM
 
@@ -82,11 +83,11 @@ class LocalPlanner:
                     obs_pos.append([new_x*30/256,new_y*30/256])
         return obs_pos
 
-    def generate_path(self, obstacle_array, global_path, current_speed):
+    def generate_path(self, obstacle_array, dyn_obs, global_path, current_speed):
         print(self.planner_type)
         if self.expt_type == "temporal":
             if self.planner_type == "NuroMPPI":
-                return self.generate_path_nuromppi_dyn(obstacle_array, global_path, current_speed)
+                return self.generate_path_nuromppi_dyn(obstacle_array, dyn_obs, global_path, current_speed)
         elif self.expt_type == "static":                
             if self.planner_type == "NuroMPPI":
                 return self.generate_path_nuromppi(obstacle_array, global_path, current_speed)
@@ -96,7 +97,7 @@ class LocalPlanner:
                 return self.generate_path_gcem(obstacle_array, global_path, current_speed)
 
 
-    def generate_path_nuromppi_dyn(self, obstacle_array, global_path, current_speed):
+    def generate_path_nuromppi_dyn(self, obstacle_array, dyn_obs, global_path, current_speed):
         tic_ = time.time()
         tic = time.time()
         ego_speed = current_speed
