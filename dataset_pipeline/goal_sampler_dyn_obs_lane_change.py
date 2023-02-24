@@ -250,7 +250,7 @@ class Goal_Sampler:
 
             if self.obstacles.shape[0]>0:
                 d_to_o = 1/torch.linalg.norm(self.traj_N[i,:,:2].reshape(1, self.horizon+1, 2) - torch.tensor(self.obstacles,dtype=torch.float32), dim=2)
-                d_to_o = torch.clamp(d_to_o, 1/3.0, 10000.0)/(1/3.0)
+                d_to_o = torch.clamp(d_to_o, 1/5.0, 10000.0)/(1/5.0)
                 # # d_to_o = torch.min(d_to_o, torch.tensor([1/3.5]))
                 self.collision_cost_N[i] = torch.sum(d_to_o)- (self.horizon + 1)
             # self.collision_cost_N[i] += torch.sum(d_to_o)
