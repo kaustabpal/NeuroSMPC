@@ -102,7 +102,9 @@ def run():
         nmppi = Goal_Sampler(torch.tensor([0,0,np.deg2rad(90)]), 4.13, 0, obstacles=torch.tensor(obs_pos, dtype = dtype), num_particles = 100)
         model.eval()
         with torch.no_grad():
+            tic = time.time()
             nmppi.mean_action = model(occ_map.unsqueeze(0).to(device)).reshape(30,2) # NN output reshaped
+            print("NMPPI time: ", time.time() - tic)
         nmppi.infer_traj()
         t2 = time.time()
         nn_time.append(t2-t1)
@@ -113,7 +115,9 @@ def run():
         ego_theta = np.rad2deg(np.pi/2 + (np.pi/2 - theta[0]))
         obs_pos_frenet = global_to_frenet(obs_pos, new_g_path, interpolated_g_path)
         mppi = Goal_Sampler(torch.tensor([0,0,np.deg2rad(ego_theta)]), 4.13, 0, obstacles=torch.tensor(obs_pos_frenet,dtype = dtype), num_particles = 100)
+        tic = time.time()
         mppi.plan_traj()
+        print("MPPI func call: ", time.time()-tic)
         mean_controls1 = mppi.mean_action
         mean_traj1 = mppi.traj_N[-2,:,:]
         cov_controls1 = mppi.scale_tril

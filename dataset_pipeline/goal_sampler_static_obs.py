@@ -310,18 +310,15 @@ class Goal_Sampler:
         # self.scale_tril = torch.sqrt(self.cov_action)
         # self.full_scale_tril = torch.diag(self.scale_tril)
 
-        for i in range(1):
+        for i in range(2):
             self.scale_tril = torch.sqrt(self.cov_action)
             self.full_scale_tril = torch.diag(self.scale_tril)
-            t1 = time.time()
             # self.get_free_balls()
             self.sample_controls()
             # print("Sample Controls: ", time.time() - t1)
             
-            t1 = time.time()
             top_w, self.top_controls = self.rollout()
             # print("Rollout: ", time.time() - t1)
-            t1 = time.time()
             self.update_distribution(top_w, self.top_controls)
             # print("Update_Distribution: ", time.time() - t1)
             # print("#######################")
@@ -330,6 +327,7 @@ class Goal_Sampler:
         self.full_scale_tril = torch.diag(self.scale_tril)
         self.sample_controls()
         top_w, self.top_controls = self.rollout()
+        print(time.time()-t1)
         # print(self.mean_action)
         # self.centers[:,:] = copy.deepcopy(self.top_trajs[0,:,:2])
         # self.get_free_balls()

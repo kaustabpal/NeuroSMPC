@@ -17,13 +17,13 @@ import os
 
 @dataclass
 class Args:
-    dataset_dir: str = '/scratch/kaustab.pal/iros_23/dataset/train/' #'../iros_23/dataset/' #'/scratch/kaustab.pal/iros_23/dataset/' # 'data/dataset_beta/'
+    dataset_dir: str = '/scratch/kaustab.pal/iros_23/5kdata/train/' #'../iros_23/dataset/' #'/scratch/kaustab.pal/iros_23/dataset/' # 'data/dataset_beta/'
     weights_dir: str = '/scratch/kaustab.pal/iros_23/weights/' #'../iros_23/weights/' #'/scratch/kaustab.pal/iros_23/weights/' 
     loss_dir: str = '/scratch/kaustab.pal/iros_23/loss/'  #'../iros_23/loss/' #'/scratch/kaustab.pal/iros_23/loss/' 
-    val_split: float = 0.3
+    val_split: float = 0.2
     num_epochs: int = 500
     seed: int = 12321
-    exp_id: str = 'exp5'
+    exp_id: str = '5kdata'
 args = tyro.cli(Args)
 
 
@@ -37,10 +37,12 @@ def main():
     ### Datset Setup ####
     dataset = Im2ControlsDataset(dataset_dir=args.dataset_dir)
     total_size = len(dataset)
-    print("Dataset size: ", total_size)
     test_size = int(total_size * 0.0)
     val_size = int(total_size * args.val_split)
     train_size = total_size - test_size - val_size
+    print("Total dataset size: ", total_size)
+    print("Training dataset size: ", train_size)
+    print("Validation dataset size: ", val_size)
     train_ds, val_ds, test_ds = torch.utils.data.random_split(
             dataset, [train_size, val_size, test_size], torch.Generator().manual_seed(args.seed)
         )
@@ -94,7 +96,7 @@ def main():
             w_pred = pred_controls[:,w_idx].clone()
 
             optimizer.zero_grad()
-            v_loss = criterion(v_pred, v_gt)
+            v_loss = criterion(v_pred*torch.tensor([4.13], device=device, requires_grad=True), v_gt)
             w_loss = criterion(w_pred*torch.tensor([57.2958], device=device, requires_grad=True), \
                     w_gt*torch.tensor([57.2958], device=device, requires_grad=True))
             loss = v_loss + w_loss #criterion(pred_controls, controls)
@@ -124,7 +126,7 @@ def main():
                 pred_controls = model(occ_map)
                 v_pred = pred_controls[:,v_idx]
                 w_pred = pred_controls[:,w_idx]
-                v_loss = criterion(v_pred, v_gt)
+                v_loss = criterion(v_pred*torch.tensor([4.13], device=device, requires_grad=True), v_gt)
                 w_loss = criterion(w_pred*torch.tensor([57.2958], device=device, requires_grad=True), \
                         w_gt*torch.tensor([57.2958], device=device, requires_grad=True))
                 loss = v_loss + w_loss #criterion(pred_controls, controls)
