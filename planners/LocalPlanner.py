@@ -14,13 +14,14 @@ from dataset_pipeline.grad_cem import GradCEM
 from dataset_pipeline.utils import rotate, draw_circle
 
 from dataset_pipeline.frenet_transformations import global_traj, global_to_frenet, frenet_to_global
+import cv2
 
 import os
 
 class LocalPlanner:
     def __init__(self, planner="NuroMPPI", expt_type = "temporal") -> None:
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        # self.device = "cpu"
+        # self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = "cpu"
 
         self.dtype = torch.float32
         np.set_printoptions(suppress=True)
@@ -125,11 +126,11 @@ class LocalPlanner:
         else:
             self.obstacle_array_history = np.dstack((obstacle_array, self.obstacle_array_history))
 
-        print(self.obstacle_array_history.shape, len(self.obstacle_array_history.shape))
+        # print(self.obstacle_array_history.shape, len(self.obstacle_array_history.shape))
         if len(self.obstacle_array_history.shape) == 2:
             self.obstacle_array_history = self.obstacle_array_history.reshape([self.obstacle_array_history.shape[0], self.obstacle_array_history.shape[1], 1])
 
-        print(self.obstacle_array_history.shape, len(self.obstacle_array_history.shape))
+        # print(self.obstacle_array_history.shape, len(self.obstacle_array_history.shape))
 
         if self.obstacle_array_history.shape[2] >= self.temporal_hist_len:
             self.obstacle_array_history = self.obstacle_array_history[:,:,:self.temporal_hist_len]
@@ -140,7 +141,9 @@ class LocalPlanner:
         bev = np.dstack([self.obstacle_array_history, global_path_array])
 
 
-        print("BEV shape : ", bev.shape)
+        # print("BEV shape : ", bev.shape)
+        # cv2.imshow('frame', bev[:,:,-1])
+        # cv2.waitKey(20)
 
         occupancy_map = torch.as_tensor(bev, dtype = self.dtype) # obstacle pos in euclidean space
         # print("Occupancy map shape : ", occupancy_map.shape)
@@ -174,6 +177,7 @@ class LocalPlanner:
         self.time_info["midprocess"] = toc-tic
 
         #Finding the best trajectory
+        # print("dyn obe = ", obstacle_positions_dyn)
         tic = time.time()
         sampler = Goal_Sampler_Dyn(torch.tensor([0, 0, np.deg2rad(90)]), 4.13, 0, obstacles=obstacle_positions_dyn, num_particles = 100)
         sampler.num_particles = 100
@@ -193,7 +197,7 @@ class LocalPlanner:
 
         tic = time.time()
         if self.visualize or self.save:
-            self.plotter(obstacle_positions, g_path, sampler, 2.5, current_speed)
+            self.plotter(obstacle_positions, g_path, sampler, 2.5, current_speed, obstacle_positions_dyn)
         toc = time.time()
         self.time_info["plot"] = toc-tic
 
@@ -404,7 +408,7 @@ class LocalPlanner:
         self.time_info["total"] = toc_-tic_
         return best_traj, best_controls, 1
 
-    def plotter(self, obstacle_positions, global_path, sampler, ego_radius, current_speed, filename = None):
+    def plotter(self, obstacle_positions, global_path, sampler, ego_radius, current_speed, obs_poses = None, filename = None):
         # Clear plot
         plt.clf()
         
@@ -430,6 +434,10 @@ class LocalPlanner:
             # Best trajectory
             top_trajs = sampler.top_trajs.detach().cpu().numpy()
             plt.plot(top_trajs[0,:,0], top_trajs[0,:,1], 'lime', markersize=2, label = "best traj")
+        
+        if obs_poses is not None:
+            for i in range(len(obs_poses)):
+                plt.scatter(obs_poses[i][:,0],obs_poses[i][:,1],color='black', alpha=0.7)
         
         # Set Limits
         plt.ylim(-15,15)

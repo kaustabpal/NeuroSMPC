@@ -55,7 +55,7 @@ def run():
     expt_type = EXPT_NAME.split("_")[1]
     expt_ver = EXPT_NAME.split("_")[2]
 
-    print("Using planner: ", planner_type)
+    print("Using planner: ", planner_type, expt_type)
     planner = LocalPlanner(planner=planner_type, expt_type = expt_type)
     
     os.system('rm -rf ' + temp_dir)

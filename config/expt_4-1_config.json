@@ -75,7 +75,7 @@
             "speed_difference_percentage" : 80.0
         },
         {
-            "id" : 1,
+            "id" : 2,
             "blueprint" : "vehicle.tesla.model3",
             "spawn_type" : "relative",
             "control_type" : "waypoint",
@@ -87,7 +87,7 @@
             "speed_difference_percentage" : 80.0
         },
         {
-            "id" : 1,
+            "id" : 3,
             "blueprint" : "vehicle.tesla.model3",
             "spawn_type" : "relative",
             "control_type" : "waypoint",
@@ -99,7 +99,7 @@
             "speed_difference_percentage" : 80.0
         },
         {
-            "id" : 1,
+            "id" : 4,
             "blueprint" : "vehicle.tesla.model3",
             "spawn_type" : "relative",
             "control_type" : "waypoint",

@@ -535,6 +535,7 @@ class CarEnv():
                 self.traffic_manager.vehicle_percentage_speed_difference(npc, npc_conf["speed_difference_percentage"])
 
                 self.npcs[npc_conf["id"]] = npc
+                print("List of npcs - ", self.npcs.keys())
         self.traffic_manager.set_synchronous_mode(True)
 
 
