@@ -93,8 +93,8 @@ class CarEnv(gym.Env):
         client = carla.Client('127.0.0.1', 2000)
         client.set_timeout(10.0)
         # client.load_world('Town04')
-        client.load_world('Town02')
-        # client.load_world('Town10HD')
+        # client.load_world('Town02')
+        client.load_world('Town10HD')
         self.world = client.get_world()
         settings = self.world.get_settings()
         settings.synchronous_mode = True
@@ -174,7 +174,7 @@ class CarEnv(gym.Env):
 
         ### Traffic Manager
         self.traffic_manager = None
-        self.number_of_vehicles = 0
+        self.number_of_vehicles = 100
         self.number_of_walkers = 0
         self.vehicles = []
         if self.number_of_vehicles > 0:
@@ -781,6 +781,8 @@ class CarEnv(gym.Env):
         self.vehicles = []
         # Setting the traffic manager for the ego
         count = self.number_of_vehicles
+        speed = [50, 60, 70, 80, 90]
+        speed = [70]
         while count > 0:
             transform = random.choice(self.vehicle_spawn_points)
             blueprint = self._create_vehicle_bluepprint('vehicle.*', number_of_wheels=[4])
@@ -790,9 +792,12 @@ class CarEnv(gym.Env):
                 vehicle.set_autopilot(True)
                 self.vehicles.append(vehicle)
                 # self.traffic_manager.set_desired_speed(vehicle, 3)
+                self.traffic_manager.auto_lane_change(vehicle, True)
                 self.traffic_manager.ignore_lights_percentage(vehicle,100)
+                self.traffic_manager.distance_to_leading_vehicle(vehicle, 2.0)
+                self.traffic_manager.vehicle_percentage_speed_difference(vehicle,random.choice(speed))
                 count -= 1
-        self.traffic_manager.global_percentage_speed_difference(80)
+        # self.traffic_manager.global_percentage_speed_difference(80)
     
     def _create_vehicle_bluepprint(self, actor_filter, color=None, number_of_wheels=[4]):
         """Create the blueprint for a specific actor type.
