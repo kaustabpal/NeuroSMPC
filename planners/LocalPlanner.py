@@ -27,7 +27,7 @@ class LocalPlanner:
         # Args
         self.seed = 12321
         self.weights_dir = "/scratch/parth.shah/deb/weights/"
-        self.exp_id = "exp8"
+        self.exp_id = "exp10"
 
         # Set seed
         torch.manual_seed(self.seed)
