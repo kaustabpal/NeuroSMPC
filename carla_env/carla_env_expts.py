@@ -529,7 +529,7 @@ class CarEnv():
                 self.traffic_manager.distance_to_leading_vehicle(npc, npc_conf["distance_to_leading_vehicle"])
                 self.traffic_manager.ignore_lights_percentage(npc, npc_conf["ignore_lights_percentage"])
                 self.traffic_manager.ignore_signs_percentage(npc, npc_conf["ignore_signs_percentage"])
-                
+                self.traffic_manager.auto_lane_change(npc, False)
                 # self.traffic_manager.set_desired_speed(npc, npc_conf["desired_speed"])
                 self.traffic_manager.vehicle_percentage_speed_difference(npc, npc_conf["speed_difference_percentage"])
 

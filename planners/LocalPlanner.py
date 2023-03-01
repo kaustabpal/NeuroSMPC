@@ -27,7 +27,7 @@ class LocalPlanner:
         # Args
         self.seed = 12321
         self.weights_dir = "/scratch/parth.shah/deb/weights/"
-        self.exp_id = "exp1-1"
+        self.exp_id = "exp8"
 
         # Set seed
         torch.manual_seed(self.seed)
@@ -118,8 +118,9 @@ class LocalPlanner:
             mean_action = self.model(occupancy_map.unsqueeze(0).to(self.device)).reshape(30,2) # NN output reshaped        
         toc = time.time()
         self.time_info["model"] = toc-tic
-        
+         
         tic = time.time()
+        mean_action[:, 0] = mean_action[:, 0] * torch.tensor([4.13], device = self.device)
         mean_action_cpu = mean_action.detach().cpu()
         toc = time.time()
         self.time_info["midprocess"] = toc-tic

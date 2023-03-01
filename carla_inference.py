@@ -20,7 +20,7 @@ from pprint import pprint
 
 np.set_printoptions(precision=3, suppress=True)
 
-EXPT_NAME = "NuroMPPI_2-1"
+EXPT_NAME = "NuroMPPI_3-4"
 
 dataset_dir = "data/experiments/" + EXPT_NAME + "/"
 temp_dir = "data/temp/"
@@ -108,7 +108,8 @@ def run():
         ego_path.append(ego_pose)   # [x,y,z,yaw,pitch,roll]
         target_velocities.append(target_speed)
         ego_velocities.append(current_speed)
-
+        
+        print("Target Velocitty - ", target_speed)
         obs, reward, done, state, action = env.step(best_path[5:, :], target_speed=target_speed)
         env.render()
 
