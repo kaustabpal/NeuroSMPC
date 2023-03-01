@@ -13,17 +13,18 @@ import numpy as np
 from dataclasses import dataclass 
 import tyro
 import os
+import time
 # torch.backends.cudnn.deterministic=True
 
 @dataclass
 class Args:
-    dataset_dir: str = '/scratch/kaustab.pal/iros_23/5kdata/train/' #'../iros_23/dataset/' #'/scratch/kaustab.pal/iros_23/dataset/' # 'data/dataset_beta/'
-    weights_dir: str = '/scratch/kaustab.pal/iros_23/weights/' #'../iros_23/weights/' #'/scratch/kaustab.pal/iros_23/weights/' 
-    loss_dir: str = '/scratch/kaustab.pal/iros_23/loss/'  #'../iros_23/loss/' #'/scratch/kaustab.pal/iros_23/loss/' 
+    dataset_dir: str = '/home2/kaustab.pal/iros_23/dataset/train/' #'../iros_23/dataset/' #'/scratch/kaustab.pal/iros_23/dataset/' # 'data/dataset_beta/'
+    weights_dir: str = '/home2/kaustab.pal/iros_23/weights/' #'../iros_23/weights/' #'/scratch/kaustab.pal/iros_23/weights/' 
+    loss_dir: str = '/home2/kaustab.pal/iros_23/loss/'  #'../iros_23/loss/' #'/scratch/kaustab.pal/iros_23/loss/' 
     val_split: float = 0.2
     num_epochs: int = 500
     seed: int = 12321
-    exp_id: str = '5kdata'
+    exp_id: str = 'exp11'
 args = tyro.cli(Args)
 
 
@@ -61,7 +62,7 @@ def main():
     criterion = nn.MSELoss()
     #optimizer = torch.optim.Adam(params, lr=learning_rate)
     optimizer = Lion(model.parameters(), lr = learning_rate)
-    scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.33, patience=10, threshold=0.01, verbose=True)
+    scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.33, patience=20, threshold=0.01, verbose=True)
     #scheduler = CosineAnnealingLR(optimizer,
     #                            T_max = 400, # Maximum number of iterations.
     #                            eta_min = 1e-5, verbose= True)

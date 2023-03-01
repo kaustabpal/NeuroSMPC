@@ -21,7 +21,7 @@ import copy
 
 @dataclass
 class Args:
-    dataset_dir: str = '/scratch/kaustab.pal/iros_23/dataset/test/' # occ_map/' #'../carla_latest/' # 'data/dataset_beta/'
+    dataset_dir: str = '/scratch/kaustab.pal/iros_23/5k_data/test/' # occ_map/' #'../carla_latest/' # 'data/dataset_beta/'
     # dataset_dir: str = '/Users/kaustabpal/Downloads/experiments_22-02-2023/NuroMPPI_2-1/' # occ_map/' #'../carla_latest/' # 'data/dataset_beta/'
     weights_dir: str = '/scratch/kaustab.pal/iros_23/weights/' 
     loss_dir: str = '/scratch/kaustab.pal/iros_23/loss/' 
@@ -30,7 +30,7 @@ class Args:
     val_split: float = 0.3
     num_epochs: int = 1000
     seed: int = 12321
-    exp_id: str = 'exp4'
+    exp_id: str = 'exp10'
 args = tyro.cli(Args)
 
 def to_continuous(obs):
