@@ -24,7 +24,7 @@ class Args:
     val_split: float = 0.2
     num_epochs: int = 500
     seed: int = 12321
-    exp_id: str = 'exp11'
+    exp_id: str = 'exp13'
 args = tyro.cli(Args)
 
 
