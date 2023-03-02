@@ -390,7 +390,7 @@ class Goal_Sampler:
         self.scale_tril = torch.sqrt(self.cov_action)
         self.full_scale_tril = torch.diag(self.scale_tril)
         self.sample_controls()
-        top_w, self.top_controls = self.rollout(s_m=1000, s_l=0)   
+        top_w, self.top_controls = self.rollout(s_m=0.1, s_s=0, s_a=0)   
     
     def get_vel(self, u):
         v1 = self.vl

@@ -20,7 +20,7 @@ from pprint import pprint
 
 np.set_printoptions(precision=3, suppress=True)
 
-EXPT_NAME = "NuroMPPI_temporal_4-1"
+EXPT_NAME = "NuroMPPI_temporal_3-1"
 
 dataset_dir = "data/experiments/" + EXPT_NAME + "/"
 temp_dir = "data/temp/"
@@ -94,9 +94,17 @@ def run():
         current_speed = env.ego_speed
         bev = env.bev
         dyn_obs = env.dyn_obs_poses
+        left_lane = env.left_lane_coords[0, 0]
+        right_lane = env.right_lane_coords[0, 0]
+
+        left_lane = env.left_lane_coords - [256/2,256/2] # global path points
+        left_lane = left_lane[:, [1,0]]*30/256
+        
+        right_lane = env.right_lane_coords - [256/2,256/2] # global path points
+        right_lane = right_lane[:, [1,0]]*30/256
         
         tic = time.time()
-        best_path, best_controls, status = planner.generate_path(obstacle_array, dyn_obs, global_path, current_speed)
+        best_path, best_controls, status = planner.generate_path(obstacle_array, dyn_obs, global_path, current_speed, left_lane[0,0], right_lane[0,0])
         toc = time.time()
         compute_time = toc - tic
         compute_times.append(compute_time)
@@ -164,21 +172,21 @@ def run():
         }
 
         if save_data:
-            file_name = temp_dir + "data/data_" + str(i).zfill(2) + ".pkl"
+            file_name = temp_dir + "data/data_" + str(i).zfill(3) + ".pkl"
             with open(file_name, "wb") as f:
                 pickle.dump(data, f)
 
-            file_name = temp_dir + "bev/bev_" + str(i).zfill(2) + ".png"
+            file_name = temp_dir + "bev/bev_" + str(i).zfill(3) + ".png"
             cv2.imwrite(file_name, bev)
 
-            file_name = temp_dir + "planner/plot_" + str(i).zfill(2) + ".png"
+            file_name = temp_dir + "planner/plot_" + str(i).zfill(3) + ".png"
             planner.save_plot(file_name)
 
             file_name = temp_dir + "run_info/run_info.pkl"
             with open(file_name, "wb") as f:
                 pickle.dump(run_info, f)
 
-            file_name = temp_dir + "god_view/god_view_" + str(i).zfill(2) + ".png"
+            file_name = temp_dir + "god_view/god_view_" + str(i).zfill(3) + ".png"
             cv2.imwrite(file_name, god_view)
 
         pprint(planner.time_info)

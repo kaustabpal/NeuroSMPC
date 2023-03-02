@@ -29,7 +29,7 @@ class LocalPlanner:
         # Args
         self.seed = 12321
         self.weights_dir = "data/weights/"
-        self.exp_id = "dyn1"
+        self.exp_id = "exp1"
 
         # Set seed
         torch.manual_seed(self.seed)
@@ -87,11 +87,11 @@ class LocalPlanner:
                     obs_pos.append([new_x*30/256,new_y*30/256])
         return obs_pos
 
-    def generate_path(self, obstacle_array, dyn_obs, global_path, current_speed):
+    def generate_path(self, obstacle_array, dyn_obs, global_path, current_speed, left_lane, right_lane):
         print(self.planner_type)
         if self.expt_type == "temporal":
             if self.planner_type == "NuroMPPI":
-                return self.generate_path_nuromppi_dyn(obstacle_array, dyn_obs, global_path, current_speed)
+                return self.generate_path_nuromppi_dyn(obstacle_array, dyn_obs, global_path, current_speed, left_lane, right_lane)
         elif self.expt_type == "static":                
             if self.planner_type == "NuroMPPI":
                 return self.generate_path_nuromppi(obstacle_array, global_path, current_speed)
@@ -101,7 +101,7 @@ class LocalPlanner:
                 return self.generate_path_gcem(obstacle_array, global_path, current_speed)
 
 
-    def generate_path_nuromppi_dyn(self, obstacle_array, dyn_obs, global_path, current_speed):
+    def generate_path_nuromppi_dyn(self, obstacle_array, dyn_obs, global_path, current_speed, left_lane, right_lane):
         tic_ = time.time()
         tic = time.time()
         ego_speed = current_speed
@@ -182,6 +182,9 @@ class LocalPlanner:
         sampler = Goal_Sampler_Dyn(torch.tensor([0, 0, np.deg2rad(90)]), 4.13, 0, obstacles=obstacle_positions_dyn, num_particles = 100)
         sampler.num_particles = 100
         sampler.mean_action = mean_action_cpu
+        sampler.left_lane_bound = left_lane
+        sampler.right_lane_bound = right_lane
+        print("Lanes = ", left_lane, right_lane)
         sampler.infer_traj()
         toc = time.time()
         self.time_info["sampler"] = toc-tic
