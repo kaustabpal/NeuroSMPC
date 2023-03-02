@@ -22,9 +22,9 @@ class Model1(nn.Module):
             # Fully Connected
             self.linear = nn.Sequential(
                 nn.Dropout(0.2),
-                nn.Linear(1280, 1280),
-                nn.BatchNorm1d(1280),
-                nn.ReLU(True),
+                #nn.Linear(1280, 1280),
+                #nn.BatchNorm1d(1280),
+                #nn.ReLU6(True),
                 nn.Linear(1280, 256),
                 nn.BatchNorm1d(256),
                 nn.ReLU(True),
