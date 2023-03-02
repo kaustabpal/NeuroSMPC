@@ -93,8 +93,8 @@ class CarEnv(gym.Env):
         client = carla.Client('127.0.0.1', 2000)
         client.set_timeout(10.0)
         # client.load_world('Town04')
-        # client.load_world('Town02')
-        client.load_world('Town10HD')
+        client.load_world('Town06')
+        # client.load_world('Town10HD')
         self.world = client.get_world()
         settings = self.world.get_settings()
         settings.synchronous_mode = True
@@ -174,7 +174,7 @@ class CarEnv(gym.Env):
 
         ### Traffic Manager
         self.traffic_manager = None
-        self.number_of_vehicles = 100
+        self.number_of_vehicles = 300
         self.number_of_walkers = 0
         self.vehicles = []
         if self.number_of_vehicles > 0:

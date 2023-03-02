@@ -85,3 +85,46 @@ def frenet_to_global(trajectory, new_global_path, g_path, dt):
     
     # # mean_controls[:, 1] = controls[:,1] + theta_dot[nearest_point_idxs]
     # # return mean_controls
+
+def frenet_to_global_with_traj(trajectory, new_global_path, g_path, dt):
+    new_global_path = new_global_path[:-2]
+    traj_dist_from_g_path = cdist(trajectory[:, :2], new_global_path)
+    nearest_point_idxs = np.argmin(traj_dist_from_g_path, axis=1)
+    next_nearest_points_idxs = nearest_point_idxs + 1
+
+    g_path_theta = np.arctan2(g_path[next_nearest_points_idxs][:,1] - g_path[nearest_point_idxs][:,1], g_path[next_nearest_points_idxs][:,0] - g_path[nearest_point_idxs][:,0])
+    # for i in range(trajectory.shape[0]-1):
+    #     if trajectory[i][0] > 0:
+    #         g_path_theta[i] = g_path_theta[i] - np.pi/2
+    #     elif trajectory[i][0] < 0:
+    #         g_path_theta[i] = g_path_theta[i] + np.pi/2
+    #     print(trajectory[i][0], g_path_theta[i])
+    dists = []
+    for i in range(traj_dist_from_g_path.shape[0]):
+        dists.append(traj_dist_from_g_path[i, nearest_point_idxs[i]])
+    dists = np.array(dists)
+    coord_x = []
+    coord_y = []
+    for i in range(dists.shape[0]):
+        val = np.pi/2
+        if new_global_path[nearest_point_idxs[i],0]<trajectory[i,0]:
+            val = -np.pi/2
+        coord_x.append(dists[i]*np.cos(g_path_theta[i]+val) + g_path[nearest_point_idxs[i], 0])
+        coord_y.append(dists[i]*np.sin(g_path_theta[i]+val) + g_path[nearest_point_idxs[i], 1])
+    coord_theta =  g_path_theta - (np.pi/2 - trajectory[:, 2])
+    coord_x = np.array(coord_x)
+    coord_y = np.array(coord_y)
+    omega = np.diff(coord_theta)/dt
+    velocity = (np.diff(coord_x)**2 + np.diff(coord_y)**2)**0.5/dt
+
+    return torch.as_tensor(np.vstack((coord_x, coord_y))).T, torch.as_tensor(np.vstack((velocity, omega))).T
+
+    # plt.scatter(g_path[nearest_point_idxs][:, 0], g_path[nearest_point_idxs][:, 1], c='b')
+    # plt.scatter(new_global_path[nearest_point_idxs][:, 0], new_global_path[nearest_point_idxs][:, 1], c='g')
+    # plt.plot(coord_x, coord_y, 'y')
+    # plt.plot(trajectory[:,0], trajectory[:,1], 'r')
+    # plt.show()
+    # quit()
+    
+    # # mean_controls[:, 1] = controls[:,1] + theta_dot[nearest_point_idxs]
+    # # return mean_controls
