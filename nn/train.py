@@ -74,6 +74,13 @@ def main():
     train_w_loss = []
     val_v_loss = []
     val_w_loss = []
+    dt=0.1
+    diag_dt = 0.1*torch.ones(30,30, device=device)
+    diag_dt = torch.tril(diag_dt)
+    theta_0 = torch.deg2rad(torch.tensor([90], \
+                dtype=torch.float32, device=device))*torch.ones(30, 1, device=device)
+    x_0 = torch.tensor([0], dtype=torch.float32, device=device)*torch.ones(30,1, device=device)
+    y_0 = torch.tensor([0], dtype=torch.float32, device=device)*torch.ones(30,1, device=device)
     for i in range(num_epochs):
 
         ###### Training ########
@@ -91,10 +98,28 @@ def main():
             # print(controls)
             v_gt = controls[:,v_idx].clone()
             w_gt = controls[:,w_idx].clone()
+            
+            w_dt = diag_dt@w_pred
+            theta_gt = theta_0 + w_dt
+            c_theta = torch.cos(theta_gt)
+            s_theta = torch.sin(theta_gt)
+            v_cos_dt = (c_theta.squeeze(1)*diag_dt)@v_pred
+            v_sin_dt = (s_theta.squeeze(1)*diag_dt)@v_pred
+            x_gt = x_0 + v_cos_dt
+            y_gt = y_0 + v_sin_dt
             # quit()
             pred_controls = model(occ_map)
             v_pred = pred_controls[:,v_idx].clone()
             w_pred = pred_controls[:,w_idx].clone()
+            
+            w_dt = diag_dt@w_pred
+            theta_pred = theta_0 + w_dt
+            c_theta = torch.cos(theta_pred)
+            s_theta = torch.sin(theta_pred)
+            v_cos_dt = (c_theta.squeeze(1)*diag_dt)@v_pred
+            v_sin_dt = (s_theta.squeeze(1)*diag_dt)@v_pred
+            x_pred = x_0 + v_cos_dt
+            y_pred = y_0 + v_sin_dt
 
             optimizer.zero_grad()
             v_loss = criterion(v_pred*torch.tensor([4.13], device=device, requires_grad=True), v_gt)
@@ -105,7 +130,7 @@ def main():
             optimizer.step()
             running_v_loss += v_loss.item()
             running_w_loss += w_loss.item()        
-       # scheduler.step()
+
         average_v_loss = running_v_loss/(data_iter)
         average_w_loss = running_w_loss/(data_iter)
         train_v_loss.append(average_v_loss)

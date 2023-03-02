@@ -5,6 +5,7 @@ from dataset_pipeline.frenet_transformations import global_traj, global_to_frene
 from matplotlib import pyplot as plt
 from matplotlib import pyplot as plt
 import numpy as np
+from torchvision import models
 np.set_printoptions(suppress=True)
 import time
 from nn.model import Model1
@@ -16,21 +17,26 @@ from dataset_pipeline.utils import draw_circle
 from dataclasses import dataclass 
 import tyro
 import copy
+import cv2
+from pytorch_grad_cam import GradCAM
+from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget, RawScoresOutputTarget
+from pytorch_grad_cam.utils.image import show_cam_on_image
 # from frenet_transformations import global_traj, global_to_frenet, frenet_to_global
 # torch.manual_seed(42)
 
 @dataclass
 class Args:
-    dataset_dir: str = '/Users/kaustabpal/work/iros_23/5k_data/test/' # occ_map/' #'../carla_latest/' # 'data/dataset_beta/'
+    dataset_dir: str = '/Users/kaustabpal/work/iros_23/5k_data/train/' # occ_map/' #'../carla_latest/' # 'data/dataset_beta/'
     # dataset_dir: str = '/Users/kaustabpal/Downloads/experiments_22-02-2023/NuroMPPI_2-1/' # occ_map/' #'../carla_latest/' # 'data/dataset_beta/'
     weights_dir: str = '../iros_23/weights/' 
     loss_dir: str = '../iros_23/loss/' 
-    infer_dir: str = "/Users/kaustabpal/work/iros_23/5k_data/test/infer_dir/"
+    infer_dir: str = "/Users/kaustabpal/work/iros_23/5k_data/train/infer_dir/"
+    grad_cam_dir: str = "/Users/kaustabpal/work/iros_23/5k_data/train/grad_cam_dir/"
     time_dir: str = "../iros_23/time_dir/"
     val_split: float = 0.3
     num_epochs: int = 1000
     seed: int = 12321
-    exp_id: str = 'exp10'
+    exp_id: str = 'exp12'
 args = tyro.cli(Args)
 
 def to_continuous(obs):
@@ -49,13 +55,19 @@ def run():
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
     
-    os.makedirs(args.infer_dir, exist_ok=True)
-    os.makedirs(args.infer_dir+args.exp_id +"/", exist_ok=True)
+    os.makedirs(args.grad_cam_dir, exist_ok=True)
+    os.makedirs(args.grad_cam_dir+args.exp_id +"/", exist_ok=True)
     
     model = Model1()
     weights = torch.load(args.weights_dir+"model_"+args.exp_id+".pt", map_location=torch.device(device))
     model.load_state_dict(weights)
     model.to(device)
+    model.eval()
+    target_layers = model.fe[-1]
+    # quit()
+    # model = models.resnet50(pretrained=True)
+    # print(model.layer4)
+    # quit()
     
     occ_map_files = [f for f in os.listdir(args.dataset_dir+"occ_map") if not f.startswith('.')]
     print("Dataset size: ", len(occ_map_files))
@@ -71,7 +83,7 @@ def run():
         file_name = args.dataset_dir+"occ_map/" + "data_" + str(i).zfill(5) + ".pkl"
         # plt_save_file_name = plot_im_dir + "data_" + str(i)
         mean_save_filename = args.dataset_dir+"mean_controls/" + "data_" + str(i).zfill(5) + ".npy"
-        infer_file_name = args.infer_dir+args.exp_id +"/" + "data_" + str(i).zfill(5)
+        grad_cam_file_name = args.grad_cam_dir+args.exp_id +"/" + "data_" + str(i).zfill(5)
         
         mean_controls_gt = np.load(args.dataset_dir+"mean_controls/" + "data_" + str(i).zfill(5) + ".npy")
         mean_controls_gt = torch.as_tensor(mean_controls_gt, dtype=dtype, device = device)
@@ -81,14 +93,15 @@ def run():
             
         # Plotting g_path on occ_map in separate channel
         obs_array = data['obstable_array']
+        
         g_path_array = np.zeros((256,256))
         g_path = copy.copy(data['g_path'])
         g_path[:,0] = -g_path[:,0] + 256 # global path points
         g_path = g_path.astype(np.int32)
         g_path = g_path[np.where( (g_path[:, 0]<256) & (g_path[:, 1]<256) & (g_path[:, 0]>=0) & (g_path[:, 1]>=0) )]
         g_path_array[g_path[:,0],g_path[:,1]] = 255
+        
         bev = np.dstack([obs_array, g_path_array])
-
 
         occ_map = torch.as_tensor(bev, dtype = dtype)
         occ_map = torch.permute(occ_map, (2,0,1)) / 255.0 
@@ -97,100 +110,37 @@ def run():
         g_path = g_path[:, [1,0]]*30/256
         
         obs_pos = np.array(to_continuous(obs_array))
-                
-        t1 = time.time()
+
+        input_tensor = occ_map.unsqueeze(0)
+        targets = []
+        for i in range(60):
+            targets.append(ClassifierOutputTarget(i))
+            
+        # targets = [ClassifierOutputTarget(0),ClassifierOutputTarget(1),ClassifierOutputTarget(2),ClassifierOutputTarget(3)]
+        cam = GradCAM(model=model, target_layers=target_layers, use_cuda=False)
+        grayscale_cam = cam(input_tensor=input_tensor, targets=targets)
+        grayscale_cam = grayscale_cam[0, :]
+
         nmppi = Goal_Sampler(torch.tensor([0,0,np.deg2rad(90)]), 4.13, 0, obstacles=obs_pos, num_particles = 100)
         model.eval()
         with torch.no_grad():
-            tic = time.time()
-            nmppi.mean_action = model(occ_map.unsqueeze(0)).reshape(30,2) # NN output reshaped
-            toc = time.time()
-            print(toc-tic)
-            # quit()
+            nmppi.mean_action = model(input_tensor).reshape(30,2) # NN output reshaped
             nmppi.mean_action[:,0] = nmppi.mean_action[:,0]*torch.tensor([4.13], device=device)
         nmppi.infer_traj()
-        t2 = time.time()
-        nn_time.append(t2-t1)
-        print("Neuro MPPI Inference time: ", t2-t1)
-
-        t1 = time.time()
-        tic = time.time()
-        new_g_path, interpolated_g_path, theta = global_traj(g_path, 0.1)
-        # print("global_traj: ", time.time() - tic)
-        ego_theta = np.rad2deg(np.pi/2 + (np.pi/2 - theta[0]))
-        tic = time.time()
-        obs_pos_frenet = global_to_frenet(obs_pos, new_g_path, interpolated_g_path)
-        # print("global_to_frenet: ", time.time() - tic)
-        tic = time.time()
-        mppi = Goal_Sampler(torch.tensor([0,0,np.deg2rad(90)]), 4.13, 0, obstacles=obs_pos, num_particles = 100)
-        # print("Goal_Sampler: ", time.time() - tic)
-        tic = time.time()
-        # mppi.plan_traj()
-        # print("plan_traj: ", time.time() - tic)
-        # mean_controls1 = mppi.mean_action
-        # mean_traj1 = mppi.traj_N[-2,:,:]
-        # cov_controls1 = mppi.scale_tril
-        # mean_controls1[:,1] = frenet_to_global(mean_traj1, new_g_path, interpolated_g_path, 0.1)
-        # mppi.obstacles = obs_pos
-        # mppi.mean_action = torch.as_tensor(mean_controls1)
-        mppi.mean_action = mean_controls_gt
-        # np.save(mean_save_filename,mppi.mean_action)
-        # mppi.c_state = torch.tensor([0,0,np.deg2rad(90)])
-        tic = time.time()
-        mppi.infer_traj()
-        # print("infer_traj: ", time.time() - tic)
-        # quit()
-        t2 = time.time()
-        mppi_time.append(t2-t1)
-        print("MPPI Inference time: ", t2-t1)
-
-        # t1 = time.time()
-        # new_g_path, interpolated_g_path, theta = global_traj(g_path, 0.1)
-        # ego_theta = np.rad2deg(np.pi/2 + (np.pi/2 - theta[0]))
-        # obs_pos_frenet = global_to_frenet(obs_pos, new_g_path, interpolated_g_path)
-        # gradcem = GradCEM(torch.tensor([0,0,np.deg2rad(90)]), 4.13, 0, obstacles=obs_pos, num_particles = 100)
-        # gradcem.plan_traj()
-        # mean_controls1 = gradcem.mean_action
-        # mean_traj1 = gradcem.traj_N[-2,:,:]
-        # cov_controls1 = gradcem.scale_tril
-        # mean_controls1[:,1] = frenet_to_global(mean_traj1.detach(), new_g_path, interpolated_g_path, 0.1)
-        # gradcem.obstacles = obs_pos
-        # gradcem.mean_action = torch.as_tensor(mean_controls1)
-        # gradcem.c_state = torch.tensor([0,0,np.deg2rad(90)])
-        # gradcem.infer_traj()
-        # t2 = time.time()
-        # gradcem_time.append(t2-t1)
-        # print("GradCEM Inference time: ", t2-t1)
-
-        plt.scatter(g_path[:,0],g_path[:,1],color='blue', alpha=0.1, label = "Global path")
-
-        x_car, y_car = draw_circle(0, 0, 1.80)
+        plt.scatter(g_path[:,0]*256/30+256/2, -g_path[:,1]*256/30+256/2,color='yellow', alpha=0.1, label = "Global path")
+        
+        # plt.show()
+        x_car, y_car = draw_circle(256/2, 256/2, 1.80*256/30)
         plt.plot(x_car,y_car,'g')
-        
-        plt.plot(obs_pos[:,0], obs_pos[:,1], 'k.')
-        
-        # plt.plot(nmppi.traj_N[:,:,0], nmppi.traj_N[:,:,1], '.b', markersize=1, alpha=0.1)
-        plt.plot(nmppi.traj_N[-2,:,0], nmppi.traj_N[-2,:,1], 'red', markersize=3.5, label = "NMPPI")
-        # plt.plot(nmppi.top_trajs[0,:,0], nmppi.top_trajs[0,:,1], 'green', markersize=2, label = "NMPPI Best traj")
-        
-        plt.plot(mppi.traj_N[-2,:,0], mppi.traj_N[-2,:,1], 'blue', markersize=3, label = "MPPI")
-        # plt.plot(mppi.top_trajs[0,:,0], mppi.top_trajs[0,:,1], 'green', markersize=2, label = "MPPI Best traj")
-        
-        # plt.plot(gradcem.traj_N[-2,:,0].detach(), gradcem.traj_N[-2,:,1].detach(), 'blue', markersize=3, label = "GradCEM")
-        # plt.plot(gradcem.top_trajs[0,:,0].detach(), gradcem.top_trajs[0,:,1].detach(), 'green', markersize=2, label = "GradCEM Best traj")
-        
-        plt.ylim(-15,15)
-        plt.xlim(-15,15)
-        plt.legend(loc="lower center")
-        plt.xticks([])
-        plt.yticks([])
-        plt.savefig(infer_file_name)
+        plt.plot((nmppi.traj_N[-2,:,0]*256/30+256/2), (-nmppi.traj_N[-2,:,1]*256/30+256/2), 'red', markersize=3.5, label = "NMPPI")
+        plt.plot(obs_pos[:,0]*256/30+256/2, -obs_pos[:,1]*256/30+256/2, 'k.')
+        plt.imshow(grayscale_cam, alpha=1)
+        # plt.legend(loc="lower center")
+        plt.savefig(grad_cam_file_name)
         # plt.show()
         plt.clf()
         # quit()
-    nn_time = np.array(nn_time)
-    print(np.mean(nn_time))
-    # np.save(args.time_dir+'nn_time', nn_time)
+
 
 
 
