@@ -24,7 +24,7 @@ class Args:
     val_split: float = 0.2
     num_epochs: int = 500
     seed: int = 12321
-    exp_id: str = 'exp13'
+    exp_id: str = 'exp18'
 args = tyro.cli(Args)
 
 
@@ -48,24 +48,24 @@ def main():
             dataset, [train_size, val_size, test_size], torch.Generator().manual_seed(args.seed)
         )
     
-    train_dataloader = DataLoader(train_ds, batch_size=2, shuffle=True, num_workers=0)
-    val_dataloader = DataLoader(val_ds, batch_size=2, shuffle=True, num_workers=0)
+    train_dataloader = DataLoader(train_ds, batch_size=32, shuffle=True, num_workers=0)
+    val_dataloader = DataLoader(val_ds, batch_size=32, shuffle=True, num_workers=0)
     # test_dataloader = DataLoader(test_ds, batch_size=4, shuffle=True, num_workers=0)
 
     ### Hyper Params ###
     learning_rate = 0.0001
     num_epochs = args.num_epochs #10 #500
-    save_step = 100
+    save_step = 1000
 
     model = Model1().to(device)
     params = list(model.parameters())
     criterion = nn.MSELoss()
     #optimizer = torch.optim.Adam(params, lr=learning_rate)
     optimizer = Lion(model.parameters(), lr = learning_rate)
-    scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.33, patience=20, threshold=0.01, verbose=True)
-    #scheduler = CosineAnnealingLR(optimizer,
-    #                            T_max = 400, # Maximum number of iterations.
-    #                            eta_min = 1e-5, verbose= True)
+    #scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.33, patience=20, threshold=0.01, verbose=True)
+    scheduler = CosineAnnealingLR(optimizer,
+                                T_max = 400, # Maximum number of iterations.
+                                eta_min = 1e-5, verbose= True)
 
 
     ########### Beginning Epochs ##############
@@ -104,6 +104,8 @@ def main():
             theta_gt = theta_0 + w_sum_gt
             c_theta_gt = torch.cos(theta_gt)
             s_theta_gt = torch.sin(theta_gt)
+            vc_theta_gt = v_gt*torch.cos(theta_gt)
+            vs_theta_gt = v_gt*torch.sin(theta_gt)
 
             pred_controls = model(occ_map)
             v_pred = pred_controls[:,v_idx].clone()
@@ -114,6 +116,8 @@ def main():
             theta_pred = theta_0 + w_sum_pred
             c_theta_pred = torch.cos(theta_pred)
             s_theta_pred = torch.sin(theta_pred)
+            vc_theta_pred = v_pred*torch.tensor([4.13], device=device, requires_grad=True)*torch.cos(theta_pred)
+            vs_theta_pred = v_pred*torch.tensor([4.13], device=device, requires_grad=True)*torch.sin(theta_pred)
 
             optimizer.zero_grad()
             v_loss = criterion(v_pred*torch.tensor([4.13], device=device, requires_grad=True), v_gt)
@@ -121,7 +125,10 @@ def main():
             s_theta_loss = criterion(s_theta_gt, s_theta_pred)
             w_loss = criterion(w_pred*torch.tensor([57.2958], device=device, requires_grad=True), \
                     w_gt*torch.tensor([57.2958], device=device, requires_grad=True))
-            loss = v_loss + w_loss + c_theta_loss + s_theta_loss #criterion(pred_controls, controls)
+            vc_loss = criterion(vc_theta_pred, vc_theta_gt)
+            vs_loss = criterion(vs_theta_pred, vs_theta_gt)
+            #loss = vc_loss + vs_loss #+ w_loss
+            loss = v_loss + w_loss 
             loss.backward()
             optimizer.step()
             running_v_loss += v_loss.item()
@@ -134,6 +141,7 @@ def main():
         print("Epoch: {}. Training: V Loss: {}. W Loss: {}".format(i, average_v_loss, average_w_loss))
         ###### Validation ########
         running_vloss = 0
+        running_loss = 0
         v_iter = 0
         model.eval()
         with torch.no_grad():
@@ -145,13 +153,31 @@ def main():
                 w_idx = [range(1,controls.shape[1],2)]
                 v_gt = controls[:,v_idx]
                 w_gt = controls[:,w_idx]
+                w_dt_gt = w_gt*torch.tensor([0.1], device=device)
+                w_sum_gt = torch.cumsum(w_dt_gt,dim=2)
+                theta_gt = theta_0 + w_sum_gt
+                c_theta_gt = torch.cos(theta_gt)
+                s_theta_gt = torch.sin(theta_gt)
+                vc_theta_gt = v_gt*torch.cos(theta_gt)
+                vs_theta_gt = v_gt*torch.sin(theta_gt)
                 pred_controls = model(occ_map)
                 v_pred = pred_controls[:,v_idx]
                 w_pred = pred_controls[:,w_idx]
+                w_dt_pred = w_pred*torch.tensor([0.1], device=device)
+                w_sum_pred = torch.cumsum(w_dt_pred,dim=2)
+                theta_pred = theta_0 + w_sum_pred
+                c_theta_pred = torch.cos(theta_pred)
+                s_theta_pred = torch.sin(theta_pred)
+                vc_theta_pred = v_pred*torch.tensor([4.13], device=device, requires_grad=True)*torch.cos(theta_pred)
+                vs_theta_pred = v_pred*torch.tensor([4.13], device=device, requires_grad=True)*torch.sin(theta_pred)
                 v_loss = criterion(v_pred*torch.tensor([4.13], device=device, requires_grad=True), v_gt)
                 w_loss = criterion(w_pred*torch.tensor([57.2958], device=device, requires_grad=True), \
                         w_gt*torch.tensor([57.2958], device=device, requires_grad=True))
-                loss = v_loss + w_loss #criterion(pred_controls, controls)
+                vc_loss = criterion(vc_theta_pred, vc_theta_gt)
+                vs_loss = criterion(vs_theta_pred, vs_theta_gt)
+                loss = vc_loss + vs_loss #+ w_loss
+                running_loss += loss.item()
+                #loss = v_loss + w_loss #criterion(pred_controls, controls)
                 running_v_loss += v_loss.item()
                 running_w_loss += w_loss.item()
                 # vloss = criterion(pred_controls, controls)
@@ -161,7 +187,8 @@ def main():
         val_v_loss.append(average_v_loss)
         val_w_loss.append(average_w_loss)
         print("Epoch: {}. Validation: V Loss: {}. W Loss: {}".format(i, average_v_loss, average_w_loss))
-        scheduler.step(average_v_loss+average_w_loss) 
+        #scheduler.step(average_v_loss + average_w_loss) 
+        scheduler.step() 
         # average_vloss = running_vloss/(v_iter)
         # val_loss.append(average_vloss)
 
