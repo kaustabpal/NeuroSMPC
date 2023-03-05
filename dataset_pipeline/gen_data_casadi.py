@@ -43,9 +43,9 @@ def run():
 	# argParser.add_argument("-m", "--mean_dir", help="mean_controls_dir")
 	# args = argParser.parse_args()
 	# dataset_dir = "storm/"
-	dataset_dir = "/home/aditya/deb_data/segments/storm/"#args.dataset_dir
-	plot_im_dir = "/home/aditya/deb_data/segments/plot_im/"#args.plot_im_dir
-	mean_dir = "/home/aditya/deb_data/segments/mean_controls/"#args.mean_dir
+	dataset_dir = "/home/aditya/deb_data/custom_poses/03-05-2023_16:50:58/storm/"#args.dataset_dir
+	plot_im_dir = "/home/aditya/deb_data/custom_poses/03-05-2023_16:50:58/plot_im/"#args.plot_im_dir
+	mean_dir = "/home/aditya/deb_data/custom_poses/03-05-2023_16:50:58/mean_controls/"#args.mean_dir
 	files = os.listdir(dataset_dir)
 	time_arr = np.linspace(0, 3.0, 31)
 	print(len(files)-1)
@@ -53,9 +53,9 @@ def run():
 		t_1 = time.time()
 		print(i)
 		obs_pos = []
-		file_name = dataset_dir + str(i).zfill(4) + ".pkl"
-		plt_save_file_name = plot_im_dir + str(i).zfill(4)
-		mean_save_filename = mean_dir + str(i).zfill(4)
+		file_name = dataset_dir + "data_" + str(i).zfill(0) + ".pkl"
+		plt_save_file_name = plot_im_dir + "data_" + str(i).zfill(0)
+		mean_save_filename = mean_dir + "data_" + str(i).zfill(0)
 		with open(file_name, "rb") as f:
 			data = pickle.load(f)
 		obs = data['obstable_array'] # obstacle pos in euclidean space
@@ -70,7 +70,7 @@ def run():
 		right_lane = right_lane[:, [1,0]]*30/256
 
 		dyn_obs = data["dyn_obs"]
-		# print(dyn_obs)
+		print(dyn_obs)
 
 		obs_poses = []
 		for o in range(len(dyn_obs)):
@@ -141,7 +141,7 @@ def run():
 		# print(data["speed"])
 
 		# sampler = Goal_Sampler(torch.tensor([0,0,np.deg2rad(ego_theta)]), 4.0, 0.0, obstacles=obs_pos_frenet)
-		agent1 = Agent(1, [0,0,np.deg2rad(ego_theta)],[0,0+30,np.deg2rad(90)], 30)
+		agent1 = Agent(1, [0,0,np.deg2rad(ego_theta)],[g_path[0, 0],0+30,np.deg2rad(90)], 30)
 		agent1.obstacles = obs_pos_frenet
 		agent1.left_lane_bound = np.median(left_lane_frenet[:, :1])
 		agent1.right_lane_bound = np.median(right_lane_frenet[:, :1])

@@ -53,8 +53,8 @@ class Agent:
         self.w_lb = -0.5
         self.amin = -5
         self.amax = 5
-        self.jmin = -0.2
-        self.jmax = 0.2
+        self.jmin = -1.0
+        self.jmax = 1.0
         self.right_lane_bound = 4.5
         self.left_lane_bound = -4.5
         self.dt = 0.1
@@ -126,7 +126,7 @@ class Agent:
                 o_st = o_X[i, :]
                 dist = ca.sqrt((a_st[1] - o_st[1]) ** 2 + (a_st[0] - o_st[0]) ** 2)
                 self.g = ca.vertcat(self.g, dist)
-                self.lbg = ca.vertcat(self.lbg, 2.5)
+                self.lbg = ca.vertcat(self.lbg, 3.0)
                 self.ubg = ca.vertcat(self.ubg, ca.inf)
 
     def lane_boundary_constraints(self):
