@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -173,6 +174,7 @@ def run():
     planner_type = EXPT_NAME.split("_")[0]
     expt_ver = EXPT_NAME.split("_")[1]
     os.makedirs(dataset_dir + "planner", exist_ok=True)
+    os.makedirs(dataset_dir + "data", exist_ok=True)
     
     print("Using planner: ", planner_type)
     planner = LocalPlanner(planner=planner_type)
@@ -185,8 +187,19 @@ def run():
         print(global_path)
         planner.generate_path(occ_map, global_path, 0)
 
+
+        data = {
+            "obstacle_array" : occ_map,
+            "g_path" : global_path
+        }
+
         file_name = dataset_dir + "planner/plot_" + str(i).zfill(2) + ".png"
         planner.save_plot(file_name)
+
+        file_name = dataset_dir + "data/data_" + str(i).zfill(2) + ".pkl"
+        with open(file_name, "wb") as f:
+            pickle.dump(data, f)
+
 
 if __name__ == "__main__":
     run()
