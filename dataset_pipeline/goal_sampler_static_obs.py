@@ -18,7 +18,7 @@ class Goal_Sampler:
         # agent info
         self.device = "cpu" # torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.balls = []
-        self.radius = 1.80
+        self.radius = 1
         self.c_state = c_state # start state
         # self.g_state = g_state # goal state
         self.step_size_mean = 0.99

@@ -26,8 +26,8 @@ class LocalPlanner:
 
         # Args
         self.seed = 12321
-        self.weights_dir = "/scratch/parth.shah/deb/weights/"
-        self.exp_id = "exp10"
+        self.weights_dir = "data/"
+        self.exp_id = "exp16"
 
         # Set seed
         torch.manual_seed(self.seed)
@@ -275,7 +275,7 @@ class LocalPlanner:
 
         tic = time.time()
         if self.visualize or self.save:
-            self.plotter(obstacle_positions, global_path, sampler, 2.5, current_speed)
+            self.plotter(obstacle_positions, global_path, sampler, 1, current_speed)
         toc = time.time()
         self.time_info["plot"] = toc-tic
 
