@@ -51,17 +51,29 @@ class Im2ControlsDataset(Dataset):
 
 class Im2ControlsDataset_Temporal(Dataset):
     def __init__(self, dataset_dir, transform=None, past_frames=5):
-        self.occ_map_dir = dataset_dir+'temp/storm/'
+        self.occ_map_dir = dataset_dir+'storm/'
         self.controls_dir = dataset_dir+'mean_controls/'
         self.past_frames = past_frames
+        # self.sequences = [
+        #     [0,     1008],
+        #     [1009,  1257],
+        #     [1258,  1683],
+        #     [2367,  3092],
+        #     [3093,  3867],
+        #     [3868,  5066],
+        #     [5067,  5202],
+        # ]
         self.sequences = [
-            [0,     1008],
-            [1009,  1257],
-            [1258,  1683],
-            [2367,  3092],
-            [3093,  3867],
-            [3868,  5066],
-            [5067,  5202],
+            [0,     645],
+            [646,  1442],
+            [1443,  1939],
+            [1940,  2538],
+            [2539,  3106],
+            [10000, 10633],
+            [10634, 11284],
+            [11285, 11634],
+            [11635, 12067],
+            [12068, 12541],
         ]
         self.occ_map_files_unsorted = [f for f in os.listdir(self.occ_map_dir) if not f.startswith('.')] 
         self.controls_files_unsorted = [f for f in os.listdir(self.controls_dir) if not f.startswith('.')]
@@ -85,7 +97,7 @@ class Im2ControlsDataset_Temporal(Dataset):
         # TODO: Normalize controls and inputs
         idx = self.idx_map[idx]
         dtype = torch.float32
-        occ_map_file = 'data_'+str(idx).zfill(2)+'.pkl'
+        occ_map_file = str(idx).zfill(4)+'.pkl'
         with open(self.occ_map_dir+occ_map_file, "rb") as f:
             data = pickle.load(f)
 
@@ -102,7 +114,7 @@ class Im2ControlsDataset_Temporal(Dataset):
         bev = np.dstack([obs_array, g_path_array])
         
         for i in range(1, self.past_frames):
-            occ_map_file = 'data_'+str(idx+i).zfill(2)+'.pkl'
+            occ_map_file = str(idx+i).zfill(4)+'.pkl'
             with open(self.occ_map_dir+occ_map_file, "rb") as f:
                 data = pickle.load(f)
             obs_array = data['obstable_array']
@@ -114,7 +126,7 @@ class Im2ControlsDataset_Temporal(Dataset):
 
         occ_map = torch.as_tensor(bev, dtype = dtype)
         occ_map = torch.permute(occ_map, (2,0,1)) / 255.0 # Use better normalization
-        controls_file = 'data_'+str(idx+self.past_frames-1).zfill(2)+'.npy'
+        controls_file = str(idx+self.past_frames-1).zfill(4)+'.npy'
         controls = torch.as_tensor(np.load(self.controls_dir+controls_file), dtype = dtype).flatten()
         sample = {'occ_map': occ_map, 'controls': controls}
 

@@ -17,14 +17,14 @@ import os
 
 @dataclass
 class Args:
-    dataset_dir: str = 'data/carla_dyn_obs_data/' #'../iros_23/dataset/' #'/scratch/kaustab.pal/iros_23/dataset/' # 'data/dataset_beta/'
+    dataset_dir: str = 'data/casadi_dyn_obs_5-03/' #'../iros_23/dataset/' #'/scratch/kaustab.pal/iros_23/dataset/' # 'data/dataset_beta/'
     weights_dir: str = 'data/weights/' #'../iros_23/weights/' #'/scratch/kaustab.pal/iros_23/weights/' 
     loss_dir: str = 'data/loss/'  #'../iros_23/loss/' #'/scratch/kaustab.pal/iros_23/loss/' 
     val_split: float = 0.3
     num_epochs: int = 500
     seed: int = 12321
     past_frames: int = 5
-    exp_id: str = 'exp1_temp'
+    exp_id: str = 'exp_temp_6-03'
 args = tyro.cli(Args)
 
 
