@@ -43,9 +43,12 @@ def run():
 	# argParser.add_argument("-m", "--mean_dir", help="mean_controls_dir")
 	# args = argParser.parse_args()
 	# dataset_dir = "storm/"
-	dataset_dir = "/home/aditya/deb_data/custom_poses/03-05-2023_16:50:58/storm/"#args.dataset_dir
-	plot_im_dir = "/home/aditya/deb_data/custom_poses/03-05-2023_16:50:58/plot_im/"#args.plot_im_dir
-	mean_dir = "/home/aditya/deb_data/custom_poses/03-05-2023_16:50:58/mean_controls/"#args.mean_dir
+	dataset_dir = "/home/aditya/deb_data/custom_poses/03-05-2023_16:40:15/storm/"#args.dataset_dir
+	plot_im_dir = "/home/aditya/deb_data/custom_poses/03-05-2023_16:40:15/plot_im/"#args.plot_im_dir
+	mean_dir = "/home/aditya/deb_data/custom_poses/03-05-2023_16:40:15/mean_controls/"#args.mean_dir
+	# dataset_dir = "/home/aditya/deb_data/carla_manual/03-05-2023_16:40:15/storm/"#args.dataset_dir
+	# plot_im_dir = "/home/aditya/deb_data/carla_manual/03-05-2023_16:40:15/plot_im/"#args.plot_im_dir
+	# mean_dir = "/home/aditya/deb_data/carla_manual/03-05-2023_16:40:15/mean_controls/"#args.mean_dir
 	files = os.listdir(dataset_dir)
 	time_arr = np.linspace(0, 3.0, 31)
 	print(len(files)-1)

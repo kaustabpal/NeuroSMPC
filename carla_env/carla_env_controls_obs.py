@@ -92,8 +92,8 @@ class CarEnv(gym.Env):
         # Settin Up the World
         client = carla.Client('127.0.0.1', 2000)
         client.set_timeout(10.0)
-        # client.load_world('Town04')
-        client.load_world('Town06')
+        client.load_world('Town05')
+        # client.load_world('Town06')
         # client.load_world('Town10HD')
         self.world = client.get_world()
         settings = self.world.get_settings()
@@ -179,7 +179,7 @@ class CarEnv(gym.Env):
         self.vehicles = []
         if self.number_of_vehicles > 0:
             self.traffic_manager = client.get_trafficmanager(8000)
-            self.traffic_manager.set_global_distance_to_leading_vehicle(5.0)
+            self.traffic_manager.set_global_distance_to_leading_vehicle(1.0)
             self.traffic_manager.set_random_device_seed(3)
             self.traffic_manager_port = self.traffic_manager.get_port()
         
@@ -209,6 +209,7 @@ class CarEnv(gym.Env):
             ego_tf_odom)
 
         nearest_wpt_tf = self.get_nearest_waypoint_transform(self.ego.get_location())
+        self.move_obs()
 
         waypoint_bl = np.linalg.pinv(ego_tf) @ nearest_wpt_tf.get_matrix()
         wx, wy, wz, wR, wP, wYaw = se3_to_components(waypoint_bl)
@@ -394,6 +395,17 @@ class CarEnv(gym.Env):
                 print(e)
             i += 1
         self.destroy_all_vehicles()
+    
+    def move_obs(self):
+        for i in range(len(self.vehicles)):
+            cur_loc = self.vehicles[i].get_transform().location
+            obs_wp = self.map.get_waypoint(cur_loc, project_to_road=True)
+            obs_wp = obs_wp.next(3.0)[0]
+            x = np.clip(obs_wp.transform.location.x - cur_loc.x, -1.0, 1.0)
+            y = np.clip(obs_wp.transform.location.y - cur_loc.y, -1.0, 1.0)
+            z = obs_wp.transform.location.z - cur_loc.z
+            self.vehicles[i].set_target_velocity(carla.Vector3D(x=x, y=y))
+
 
     def process_lidar_raw_points(self, point_cloud_carla):
         if process_lidar == False:
@@ -781,21 +793,21 @@ class CarEnv(gym.Env):
         self.vehicles = []
         # Setting the traffic manager for the ego
         count = self.number_of_vehicles
-        speed = [50, 60, 70, 80, 90]
-        speed = [70]
+        speed = [80]
         while count > 0:
             transform = random.choice(self.vehicle_spawn_points)
             blueprint = self._create_vehicle_bluepprint('vehicle.*', number_of_wheels=[4])
             blueprint.set_attribute('role_name', 'autopilot')
             vehicle = self.world.try_spawn_actor(blueprint, transform)
             if vehicle is not None:
+                # vehicle.set_simulate_physics(True)
                 vehicle.set_autopilot(True)
                 self.vehicles.append(vehicle)
                 # self.traffic_manager.set_desired_speed(vehicle, 3)
                 self.traffic_manager.auto_lane_change(vehicle, True)
                 self.traffic_manager.ignore_lights_percentage(vehicle,100)
-                self.traffic_manager.distance_to_leading_vehicle(vehicle, 2.0)
-                self.traffic_manager.vehicle_percentage_speed_difference(vehicle,random.choice(speed))
+                self.traffic_manager.distance_to_leading_vehicle(vehicle, 1.0)
+                # self.traffic_manager.vehicle_percentage_speed_difference(vehicle,random.choice(speed))
                 count -= 1
         # self.traffic_manager.global_percentage_speed_difference(80)
     

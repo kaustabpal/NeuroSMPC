@@ -37,7 +37,7 @@ class Stanley:
         self.target_speed_history = deque(maxlen=10)
 
         self.waypoints_list = []
-        self.waypoints_type = "sparse" # ["dense", "sparse"]
+        self.waypoints_type = "dense" # ["dense", "sparse"]
 
         self.cx = []
         self.cy = []

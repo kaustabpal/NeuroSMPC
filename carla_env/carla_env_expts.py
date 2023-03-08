@@ -525,14 +525,15 @@ class CarEnv():
                     break
 
                 print("----Spawned NPC - ", i, " - ", npc_conf["blueprint"], " - at ", spawn_point)
-                npc.set_autopilot(True)
+                if npc_conf["target_speed"] > 0.0:
+                    npc.set_autopilot(True)
                 
                 self.traffic_manager.distance_to_leading_vehicle(npc, npc_conf["distance_to_leading_vehicle"])
                 self.traffic_manager.ignore_lights_percentage(npc, npc_conf["ignore_lights_percentage"])
                 self.traffic_manager.ignore_signs_percentage(npc, npc_conf["ignore_signs_percentage"])
                 
                 # self.traffic_manager.set_desired_speed(npc, npc_conf["desired_speed"])
-                self.traffic_manager.vehicle_percentage_speed_difference(npc, npc_conf["speed_difference_percentage"])
+                # self.traffic_manager.vehicle_percentage_speed_difference(npc, npc_conf["speed_difference_percentage"])
 
                 self.npcs[npc_conf["id"]] = npc
                 print("List of npcs - ", self.npcs.keys())
@@ -551,6 +552,8 @@ class CarEnv():
                 if not npc.is_alive:
                     continue
                 target_speed = npc_conf["target_speed"]
+                if target_speed == 0.0:
+                    continue
                 wpt = self.map.get_waypoint(npc.get_location(), project_to_road = True, lane_type = carla.LaneType.Driving)
 
                 target_wpts = generate_target_waypoint_list_same_lane(wpt, distance_same_lane=10, step_distance=1)[0]

@@ -29,7 +29,7 @@ class LocalPlanner:
         # Args
         self.seed = 12321
         self.weights_dir = "data/weights/"
-        self.exp_id = "exp1"
+        self.exp_id = "exp3"
 
         # Set seed
         torch.manual_seed(self.seed)
@@ -184,7 +184,6 @@ class LocalPlanner:
         sampler.mean_action = mean_action_cpu
         sampler.left_lane_bound = left_lane
         sampler.right_lane_bound = right_lane
-        print("Lanes = ", left_lane, right_lane)
         sampler.infer_traj()
         toc = time.time()
         self.time_info["sampler"] = toc-tic

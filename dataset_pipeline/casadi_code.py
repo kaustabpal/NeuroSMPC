@@ -53,8 +53,8 @@ class Agent:
         self.w_lb = -0.5
         self.amin = -5
         self.amax = 5
-        self.jmin = -1.0
-        self.jmax = 1.0
+        self.jmin = -2.0
+        self.jmax = 2.0
         self.right_lane_bound = 4.5
         self.left_lane_bound = -4.5
         self.dt = 0.1
