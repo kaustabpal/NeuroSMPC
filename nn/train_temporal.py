@@ -24,7 +24,7 @@ class Args:
     num_epochs: int = 500
     seed: int = 12321
     past_frames: int = 5
-    exp_id: str = 'exp_temp_6-03'
+    exp_id: str = 'exp_temp_6-03_aug'
 args = tyro.cli(Args)
 
 

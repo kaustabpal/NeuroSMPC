@@ -81,6 +81,8 @@ class Im2ControlsDataset_Temporal(Dataset):
         self.controls_files =natsorted(self.controls_files_unsorted, key=lambda y: y.lower())
         self.idx_map = self._get_idx_map()
         self.len = len(self.idx_map)
+        self.FLIP_CHOICES = [True, False]
+
 
     def _get_idx_map(self):
         idx_map = []
@@ -128,6 +130,14 @@ class Im2ControlsDataset_Temporal(Dataset):
         occ_map = torch.permute(occ_map, (2,0,1)) / 255.0 # Use better normalization
         controls_file = str(idx+self.past_frames-1).zfill(4)+'.npy'
         controls = torch.as_tensor(np.load(self.controls_dir+controls_file), dtype = dtype).flatten()
+
+        flip = np.random.choice(self.FLIP_CHOICES)
+        if flip:
+            # TODO: Plot and verify
+            controls[1::2] = - controls[1::2]
+            occ_map = torch.flip(occ_map, [2,])  # BxHxW, Flipping along W
+        
+
         sample = {'occ_map': occ_map, 'controls': controls}
 
         return sample
