@@ -10,7 +10,7 @@ import torch.nn as nn
 from tqdm import tqdm
 from matplotlib import pyplot as plt
 import numpy as np
-from dataclasses import dataclass
+from dataclasses import dataclass 
 import tyro
 import os
 # torch.backends.cudnn.deterministic=True
@@ -18,14 +18,14 @@ import os
 
 @dataclass
 class Args:
-    dataset_dir: str = 'data/carla_dyn_obs_data/'
+    dataset_dir: str = 'data/casadi_dyn_obs_5-03/'
     weights_dir: str = 'data/weights/'
     loss_dir: str = 'data/loss/'
     val_split: float = 0.3
     num_epochs: int = 500
     seed: int = 12321
     past_frames: int = 5
-    exp_id: str = 'exp1_temp'
+    exp_id: str = 'exp_temp_6-03_aug'
 
 
 args = tyro.cli(Args)
@@ -59,7 +59,7 @@ def main():
 
     # Hyper Params
     learning_rate = 0.0001
-    num_epochs = args.num_epochs
+    num_epochs = args.num_epochs  # 10 #500
     save_step = 100
 
     model = Model_Temporal(past_frames=args.past_frames).to(device)
@@ -96,18 +96,17 @@ def main():
             # print(controls)
             v_gt = controls[:, v_idx].clone()
             w_gt = controls[:, w_idx].clone()
+            # quit()
             pred_controls = model(occ_map)
             v_pred = pred_controls[:, v_idx].clone()
             w_pred = pred_controls[:, w_idx].clone()
 
             optimizer.zero_grad()
             v_loss = criterion(v_pred, v_gt)
-            w_loss = criterion(
-                w_pred*torch.tensor([57.2958], device=device,
-                                    requires_grad=True),
-                w_gt*torch.tensor([57.2958], device=device,
-                                  requires_grad=True)
-                )
+            w_loss = criterion(w_pred*torch.tensor([57.2958], device=device,
+                                                   requires_grad=True),
+                               w_gt*torch.tensor([57.2958], device=device,
+                                                 requires_grad=True))
             loss = v_loss + w_loss  # criterion(pred_controls, controls)
             loss.backward()
             optimizer.step()
@@ -138,8 +137,8 @@ def main():
                 w_pred = pred_controls[:, w_idx]
                 v_loss = criterion(v_pred, v_gt)
                 w_loss = criterion(
-                    w_pred*torch.tensor([57.2958],
-                                        device=device, requires_grad=True),
+                    w_pred*torch.tensor([57.2958], device=device,
+                                        requires_grad=True),
                     w_gt*torch.tensor([57.2958], device=device,
                                       requires_grad=True))
                 loss = v_loss + w_loss  # criterion(pred_controls, controls)
@@ -168,14 +167,14 @@ def main():
 
     # Finishing Epochs
     plt_path = args.loss_dir + 'model_{}.png'.format(args.exp_id)
-    np.save(args.loss_dir + 'model_{}_v_train_loss'.format(
-        args.exp_id), train_v_loss)
-    np.save(args.loss_dir + 'model_{}_w_train_loss'.format(
-        args.exp_id), train_w_loss)
-    np.save(args.loss_dir + 'model_{}_v_val_loss'.format(
-        args.exp_id), val_v_loss)
-    np.save(args.loss_dir + 'model_{}_w_val_loss'.format(
-        args.exp_id), val_w_loss)
+    np.save(args.loss_dir + 'model_{}_v_train_loss'.format(args.exp_id),
+            train_v_loss)
+    np.save(args.loss_dir + 'model_{}_w_train_loss'.format(args.exp_id),
+            train_w_loss)
+    np.save(args.loss_dir + 'model_{}_v_val_loss'.format(args.exp_id),
+            val_v_loss)
+    np.save(args.loss_dir + 'model_{}_w_val_loss'.format(args.exp_id),
+            val_w_loss)
     plt.plot(train_v_loss, label="train v loss")
     plt.plot(train_w_loss, label="train w loss")
     plt.plot(val_v_loss, label="val v loss")
