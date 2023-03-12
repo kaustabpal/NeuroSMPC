@@ -52,6 +52,11 @@
                 "noise_stddev_obs" : 2.0,
                 "location" : [0.0, 0.0, 2.0],
                 "rotation" : [0.0, 0.0, 0.0]
+            },
+            {
+                "name" : "collision",
+                "type" : "sensor.other.collision",
+                "history_length" : 1
             }
         ]
     },
@@ -74,7 +79,7 @@
             "blueprint" : "vehicle.tesla.model3",
             "spawn_type" : "relative",
             "control_type" : "waypoint",
-            "spawn_point" : [20.0, 0.0, 0.5],
+            "spawn_point" : [22.0, 0.0, 0.5],
             "target_speed" : 1.0,
             "distance_to_leading_vehicle" : -5.0,
             "ignore_lights_percentage" : 100,
@@ -86,7 +91,7 @@
             "blueprint" : "vehicle.tesla.model3",
             "spawn_type" : "relative",
             "control_type" : "waypoint",
-            "spawn_point" : [30.0, 1.0, 0.5],
+            "spawn_point" : [34.0, 1.0, 0.5],
             "target_speed" : 1.0,
             "distance_to_leading_vehicle" : -5.0,
             "ignore_lights_percentage" : 100,
@@ -98,7 +103,7 @@
             "blueprint" : "vehicle.tesla.model3",
             "spawn_type" : "relative",
             "control_type" : "waypoint",
-            "spawn_point" : [40.0, 0.0, 0.5],
+            "spawn_point" : [46.0, 0.0, 0.5],
             "target_speed" : 1.0,
             "distance_to_leading_vehicle" : -5.0,
             "ignore_lights_percentage" : 100,
@@ -110,7 +115,7 @@
             "blueprint" : "vehicle.tesla.model3",
             "spawn_type" : "relative",
             "control_type" : "waypoint",
-            "spawn_point" : [50.0, 1.0, 0.5],
+            "spawn_point" : [58.0, 1.0, 0.5],
             "target_speed" : 1.0,
             "distance_to_leading_vehicle" : -5.0,
             "ignore_lights_percentage" : 100,

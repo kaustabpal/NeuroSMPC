@@ -430,7 +430,7 @@ class LocalPlanner:
         plt.plot(traj_N[:,:,0], traj_N[:,:,1], '.b', markersize=1, alpha=0.04)
 
         # Predicted trajectory
-        plt.plot(traj_N[-2,12:,0], traj_N[-2,12:,1], 'red', markersize=3, label = "Predicted")
+        plt.plot(traj_N[-2,:,0], traj_N[-2,:,1], 'red', markersize=3, label = "Predicted")
 
         if self.planner_type != "GradCEM":
             # Best trajectory

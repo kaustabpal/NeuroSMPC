@@ -20,7 +20,7 @@ from pprint import pprint
 
 np.set_printoptions(precision=3, suppress=True)
 
-EXPT_NAME = "NuroMPPI_temporal_5-2"
+EXPT_NAME = "NuroMPPI_temporal_5-3"
 
 dataset_dir = "data/experiments/" + EXPT_NAME + "/"
 temp_dir = "data/temp/"
@@ -85,6 +85,7 @@ def run():
     controls = []
     compute_times = []
     collisions = []
+    best_path_arr = []
 
     temp_best_path = np.array([[0, 0] for i in range(100)])
     while True:
@@ -121,8 +122,9 @@ def run():
             ego_path.append(ego_pose)   # [x,y,z,yaw,pitch,roll]
             target_velocities.append(target_speed)
             ego_velocities.append(current_speed)
+            best_path_arr.append(best_path)
         
-            best_path = best_path[5:, :]    
+            # best_path = best_path[5:, :]    
         else:
             best_path = None
             target_speed = -1
@@ -168,7 +170,8 @@ def run():
             "target_velocities": target_velocities,
             "controls": controls,
             "compute_times": compute_times,
-            "collisions": collisions
+            "collisions": collisions,
+            "best_path": best_path_arr
         }
 
         if save_data:

@@ -533,7 +533,7 @@ class CarEnv():
                 self.traffic_manager.ignore_signs_percentage(npc, npc_conf["ignore_signs_percentage"])
                 
                 # self.traffic_manager.set_desired_speed(npc, npc_conf["desired_speed"])
-                # self.traffic_manager.vehicle_percentage_speed_difference(npc, npc_conf["speed_difference_percentage"])
+                self.traffic_manager.vehicle_percentage_speed_difference(npc, npc_conf["speed_difference_percentage"])
 
                 self.npcs[npc_conf["id"]] = npc
                 print("List of npcs - ", self.npcs.keys())
