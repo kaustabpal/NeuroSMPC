@@ -19,6 +19,8 @@ class GradCEM:
         # agent info
         self.device = "cpu" # torch.device("cuda" if torch.cuda.is_available() else "cpu") # "cpu"
         self.radius = 2.50
+        self.left_lane_bound = -4.5
+        self.right_lane_bound = 4.5
         self.c_state = c_state # start state
         # self.c_state.device = self.device
         self.c_state.requires_grad = True
@@ -177,7 +179,7 @@ class GradCEM:
         # print(act_seq.shape, self.controls_N.shape)
         # return act_seq
         
-    def rollout(self, s_o = 1, s_s = 1, s_c = 0.1, s_m = 0):
+    def rollout(self, s_o = 10, s_s = 0.1, s_c = 1, s_m = 0):
         # print(self.num_particles)
         # print(self.controls_N.shape[0])
         t_r = time.time()
@@ -225,6 +227,11 @@ class GradCEM:
             
             # center-line cost
             self.center_line_cost_N[i] += torch.linalg.norm(self.traj_N[i,:,0]-0)
+
+            left_lane_cost = 1000*torch.ones(self.traj_N[i,self.traj_N[i,:,0]<(self.left_lane_bound+1.5),0].shape)
+            right_lane_cost = 1000*torch.ones(self.traj_N[i,self.traj_N[i,:,0]>(self.right_lane_bound-1.5),0].shape)
+            self.left_lane_bound_cost_N[i] = torch.sum(left_lane_cost) 
+            self.right_lane_bound_cost_N[i] = torch.sum(right_lane_cost) 
             
             # Obstacle avoidance
             t1 = time.time()
@@ -256,7 +263,7 @@ class GradCEM:
             #     self.goal_region_cost_N[i] = copy.deepcopy(dist)
             
         self.total_cost_N = s_s*self.ang_vel_cost_N + s_o*self.collision_cost_N + s_c*self.center_line_cost_N + \
-            s_m*self.dist_to_mean_cost_N
+            s_m*self.dist_to_mean_cost_N + self.left_lane_bound_cost_N + self.right_lane_bound_cost_N
         
     def update_distribution(self):    
         # print(self.controls_N.grad)
@@ -296,7 +303,7 @@ class GradCEM:
         self.cov_action = self.init_cov_action
         self.scale_tril = torch.sqrt(self.cov_action)
         self.full_scale_tril = torch.diag(self.scale_tril)
-        for i in range(1):
+        for i in range(5):
             # print(i)
             # self.scale_tril = torch.sqrt(self.cov_action)
             # self.full_scale_tril = torch.diag(self.scale_tril)
@@ -337,7 +344,7 @@ class GradCEM:
         self.scale_tril = torch.sqrt(self.cov_action)
         self.full_scale_tril = torch.diag(self.scale_tril)
         self.sample_controls()
-        self.rollout(s_o = 1, s_s = 0, s_c = 0, s_m = 1)   
+        self.rollout(s_o = 2, s_s = 1, s_c = 0, s_m = 1)   
     
     def get_vel(self, u):
         v1 = self.vl

@@ -48,7 +48,7 @@ def run():
 
 	t_1 = time.time()
 	obs_pos = []
-	file_name ="/home/aditya/Documents/DEB/data/experiments/NuroMPPI_temporal_6-1_old/data/" + "data_438.pkl"
+	file_name ="/home/aditya/Documents/DEB/data/experiments/NuroMPPI_temporal_5-3/data/" + "data_103.pkl"
 	with open(file_name, "rb") as f:
 		data = pickle.load(f)
 	obs = data['obstable_array'] # obstacle pos in euclidean space
@@ -103,10 +103,10 @@ def run():
 	obs_pos_frenet = np.array(obs_pos_frenet)
 
 
-	fn ="/home/aditya/Documents/DEB/data/experiments/NuroMPPI_temporal_6-1_old/run_info/" + "run_info.pkl"
+	fn ="/home/aditya/Documents/DEB/data/experiments/NuroMPPI_temporal_5-3/run_info/" + "run_info.pkl"
 	with open(fn, "rb") as f:
 		data_nmppi_dyn = pickle.load(f)
-	traj_nmppi_dyn = data_nmppi_dyn["best_path"][434]
+	traj_nmppi_dyn = data_nmppi_dyn["best_path"][99]
 
 
 	sampler = Goal_Sampler(torch.tensor([0,0,np.deg2rad(ego_theta)]), 4.0, 0.0, obstacles=obs_pos)
@@ -177,8 +177,8 @@ def run():
 	plt.plot(obs_pos[:,0], obs_pos[:,1], 'k.')
 	plt.plot(traj_sampler[:, 0], traj_sampler[:, 1], 'g', label="MPPI")
 	plt.plot(traj_cem[:, 0], traj_cem[:, 1], 'orange', label="GradCEM")
-	plt.plot(traj_stat[:, 0], traj_stat[:, 1], 'fuchsia', label="NSMPC Static (Ours)")
-	plt.plot(traj_nmppi_dyn[:, 1], traj_nmppi_dyn[:, 0], 'b', label="NSMPC Dynamic (Ours)")
+	# plt.plot(traj_stat[:, 0], traj_stat[:, 1], 'fuchsia', label="NSMPC Static (Ours)")
+	plt.plot(traj_nmppi_dyn[:, 1], traj_nmppi_dyn[:, 0], 'b', label="NSMPC (Ours)")
 	plt.legend(loc="lower center")
 	# plt.axis('equal')
 	plt.xlim(-15, 15)

@@ -20,7 +20,7 @@ from pprint import pprint
 
 np.set_printoptions(precision=3, suppress=True)
 
-EXPT_NAME = "NuroMPPI_temporal_5-3"
+EXPT_NAME = "GradCEM_static_5-3"
 
 dataset_dir = "data/experiments/" + EXPT_NAME + "/"
 temp_dir = "data/temp/"

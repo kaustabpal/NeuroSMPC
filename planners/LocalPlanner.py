@@ -96,9 +96,9 @@ class LocalPlanner:
             if self.planner_type == "NuroMPPI":
                 return self.generate_path_nuromppi(obstacle_array, global_path, current_speed)
             elif self.planner_type == "MPPI":
-                return self.generate_path_mppi(obstacle_array, global_path, current_speed)
+                return self.generate_path_mppi(obstacle_array, global_path, current_speed, left_lane, right_lane)
             elif self.planner_type == "GradCEM":
-                return self.generate_path_gcem(obstacle_array, global_path, current_speed)
+                return self.generate_path_gcem(obstacle_array, global_path, current_speed, left_lane, right_lane)
 
 
     def generate_path_nuromppi_dyn(self, obstacle_array, dyn_obs, global_path, current_speed, left_lane, right_lane):
@@ -280,7 +280,7 @@ class LocalPlanner:
         self.time_info["total"] = toc_-tic_
         return best_traj, best_controls, 1
     
-    def generate_path_mppi(self, obstacle_array, global_path, current_speed):
+    def generate_path_mppi(self, obstacle_array, global_path, current_speed, left_lane, right_lane):
         tic_ = time.time()
         tic = time.time()
         ego_speed = current_speed
@@ -303,6 +303,8 @@ class LocalPlanner:
 
         tic = time.time()
         sampler = Goal_Sampler(torch.tensor([0, 0, np.deg2rad(ego_theta)]), 4.13, 0, obstacles=obstacle_positions)
+        sampler.left_lane_bound = left_lane
+        sampler.right_lane_bound = right_lane
         sampler.plan_traj()
         toc = time.time()
         self.time_info["plan-traj"] = toc-tic
@@ -342,7 +344,7 @@ class LocalPlanner:
         self.time_info["total"] = toc_-tic_
         return best_traj, best_controls, 1
 
-    def generate_path_gcem(self, obstacle_array, global_path, current_speed):
+    def generate_path_gcem(self, obstacle_array, global_path, current_speed, left_lane, right_lane):
         tic_ = time.time()
         tic = time.time()
         ego_speed = current_speed
@@ -365,6 +367,8 @@ class LocalPlanner:
 
         tic = time.time()
         sampler = GradCEM(torch.tensor([0, 0, np.deg2rad(ego_theta)]), 4.13, 0, obstacles=obstacle_positions)
+        sampler.left_lane_bound = left_lane
+        sampler.right_lane_bound = right_lane
         sampler.plan_traj()
         toc = time.time()
         self.time_info["plan-traj"] = toc-tic
