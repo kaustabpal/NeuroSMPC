@@ -48,16 +48,16 @@ def run():
 
 	t_1 = time.time()
 	obs_pos = []
-	files = os.listdir("/home/aditya/Documents/DEB/data/experiments/MPPI_static_5-3_og/data/")
-	save_trajs_path = "/home/aditya/Documents/DEB/data/experiments/MPPI_static_5-3_og/trajs/"
+	files = os.listdir("/home/aditya/Documents/DEB/data/experiments/MPPI_static_5-3/data/")
+	save_trajs_path = "/home/aditya/Documents/DEB/data/experiments/MPPI_static_5-3/trajs/"
 	mppi_trajs = []
 	grad_cem__trajs = []
 	nsmpc_trajs = []
 
-	for i in range(len(files)):
+	for i in range(540):
 		print(i, )
 		plt.clf()
-		file_name ="/home/aditya/Documents/DEB/data/experiments/MPPI_static_5-3_og/data/" + "data_" + str(i).zfill(3) + ".pkl"
+		file_name ="/home/aditya/Documents/DEB/data/experiments/MPPI_static_5-3/data/" + "data_" + str(i).zfill(3) + ".pkl"
 		with open(file_name, "rb") as f:
 			data = pickle.load(f)
 		obs = data['obstable_array'] # obstacle pos in euclidean space
@@ -116,7 +116,7 @@ def run():
 		# with open(fn, "rb") as f:
 		# 	data_nmppi_dyn = pickle.load(f)
 		# traj_nmppi_dyn = data_nmppi_dyn["best_path"][i-4]
-		fn ="/home/aditya/Documents/DEB/data/experiments/MPPI_static_5-3_og/run_info/" + "run_info.pkl"
+		fn ="/home/aditya/Documents/DEB/data/experiments/MPPI_static_5-3/run_info/" + "run_info.pkl"
 		with open(fn, "rb") as f:
 			data_nmppi_dyn = pickle.load(f)
 		traj_nmppi_dyn = data_nmppi_dyn["best_path"][i]
@@ -200,7 +200,7 @@ def run():
 		# plt.axis('equal')
 		plt.xlim(-15, 15)
 		plt.ylim(-15, 15)
-		plt.savefig("data/plots_mppi/" + str(i).zfill(3) + ".png", dpi=500)
+		plt.savefig("data/plots_gradcem/" + str(i).zfill(3) + ".png", dpi=500)
 		# plt.show()
 		plt.pause(0.001)
 

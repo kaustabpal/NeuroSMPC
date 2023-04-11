@@ -92,9 +92,9 @@ class CarEnv(gym.Env):
         # Settin Up the World
         client = carla.Client('127.0.0.1', 2000)
         client.set_timeout(10.0)
-        client.load_world('Town05')
+        # client.load_world('Town05')
         # client.load_world('Town06')
-        # client.load_world('Town10HD')
+        client.load_world('Town10HD')
         self.world = client.get_world()
         settings = self.world.get_settings()
         settings.synchronous_mode = True
@@ -174,12 +174,12 @@ class CarEnv(gym.Env):
 
         ### Traffic Manager
         self.traffic_manager = None
-        self.number_of_vehicles = 300
+        self.number_of_vehicles = 150   #300
         self.number_of_walkers = 0
         self.vehicles = []
         if self.number_of_vehicles > 0:
             self.traffic_manager = client.get_trafficmanager(8000)
-            self.traffic_manager.set_global_distance_to_leading_vehicle(1.0)
+            # self.traffic_manager.set_global_distance_to_leading_vehicle(1.0)
             self.traffic_manager.set_random_device_seed(3)
             self.traffic_manager_port = self.traffic_manager.get_port()
         
@@ -784,7 +784,7 @@ class CarEnv(gym.Env):
 
         if self.traffic_manager is None:
             self.traffic_manager = self.world.get_trafficmanager(8000)
-            self.traffic_manager.set_global_distance_to_leading_vehicle(1.0)
+            # self.traffic_manager.set_global_distance_to_leading_vehicle(1.0)
             self.traffic_manager.set_random_device_seed(0)
             self.traffic_manager_port = self.traffic_manager.get_port()
         
@@ -793,21 +793,21 @@ class CarEnv(gym.Env):
         self.vehicles = []
         # Setting the traffic manager for the ego
         count = self.number_of_vehicles
-        speed = [80]
+        speed = [70]
         while count > 0:
             transform = random.choice(self.vehicle_spawn_points)
             blueprint = self._create_vehicle_bluepprint('vehicle.*', number_of_wheels=[4])
             blueprint.set_attribute('role_name', 'autopilot')
             vehicle = self.world.try_spawn_actor(blueprint, transform)
             if vehicle is not None:
-                # vehicle.set_simulate_physics(True)
-                vehicle.set_autopilot(True)
+                vehicle.set_simulate_physics(True)
+                vehicle.set_autopilot(True, self.traffic_manager_port)
                 self.vehicles.append(vehicle)
                 # self.traffic_manager.set_desired_speed(vehicle, 3)
                 self.traffic_manager.auto_lane_change(vehicle, True)
                 self.traffic_manager.ignore_lights_percentage(vehicle,100)
-                self.traffic_manager.distance_to_leading_vehicle(vehicle, 1.0)
-                # self.traffic_manager.vehicle_percentage_speed_difference(vehicle,random.choice(speed))
+                self.traffic_manager.distance_to_leading_vehicle(vehicle, 2.0)
+                self.traffic_manager.vehicle_percentage_speed_difference(vehicle,random.choice(speed))
                 count -= 1
         # self.traffic_manager.global_percentage_speed_difference(80)
     

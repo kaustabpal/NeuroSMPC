@@ -1,7 +1,8 @@
 import torch
 from casadi_code import Agent
+from goal_sampler_dyn_obs_lane_change import Goal_Sampler
 from matplotlib import pyplot as plt
-from matplotlib import pyplot as plt
+from matplotlib.patches import Rectangle
 import numpy as np
 import time
 # import cv2
@@ -43,22 +44,22 @@ def run():
 	# argParser.add_argument("-m", "--mean_dir", help="mean_controls_dir")
 	# args = argParser.parse_args()
 	# dataset_dir = "storm/"
-	dataset_dir = "/home/aditya/deb_data/custom_poses/03-05-2023_16:40:15/storm/"#args.dataset_dir
-	plot_im_dir = "/home/aditya/deb_data/custom_poses/03-05-2023_16:40:15/plot_im/"#args.plot_im_dir
-	mean_dir = "/home/aditya/deb_data/custom_poses/03-05-2023_16:40:15/mean_controls/"#args.mean_dir
-	# dataset_dir = "/home/aditya/deb_data/carla_manual/03-05-2023_16:40:15/storm/"#args.dataset_dir
-	# plot_im_dir = "/home/aditya/deb_data/carla_manual/03-05-2023_16:40:15/plot_im/"#args.plot_im_dir
-	# mean_dir = "/home/aditya/deb_data/carla_manual/03-05-2023_16:40:15/mean_controls/"#args.mean_dir
+	dataset_dir = "/home/aditya/deb_data/final_data/storm/"#args.dataset_dir
+	plot_im_dir = "/home/aditya/deb_data/final_data/plot_im/"#args.plot_im_dir
+	mean_dir = "/home/aditya/deb_data/final_data/mean_controls/"#args.mean_dir
+	# dataset_dir = "/home/aditya/deb_data/carla_manual/storm/"#args.dataset_dir
+	# plot_im_dir = "/home/aditya/deb_data/carla_manual/plot_im/"#args.plot_im_dir
+	# mean_dir = "/home/aditya/deb_data/carla_manual/mean_controls/"#args.mean_dir
 	files = os.listdir(dataset_dir)
 	time_arr = np.linspace(0, 3.0, 31)
 	print(len(files)-1)
-	for i in range(len(files)):
+	for i in range(747, len(files)):
 		t_1 = time.time()
 		print(i)
 		obs_pos = []
-		file_name = dataset_dir + "data_" + str(i).zfill(0) + ".pkl"
-		plt_save_file_name = plot_im_dir + "data_" + str(i).zfill(0)
-		mean_save_filename = mean_dir + "data_" + str(i).zfill(0)
+		file_name = dataset_dir + str(i).zfill(4) + ".pkl"
+		plt_save_file_name = plot_im_dir + str(i).zfill(4)
+		mean_save_filename = mean_dir + str(i).zfill(4)
 		with open(file_name, "rb") as f:
 			data = pickle.load(f)
 		obs = data['obstable_array'] # obstacle pos in euclidean space
@@ -87,6 +88,8 @@ def run():
 			new_theta = rel_yaw + np.deg2rad(-dyn_obs[o][4])*time_arr
 			obs_path_x = y + dyn_obs[o][3]*time_arr*np.cos(new_theta)
 			obs_path_y = x + dyn_obs[o][3]*time_arr*np.sin(new_theta)
+			# obs_path_x = y + 0*dyn_obs[o][3]*time_arr*np.cos(new_theta)
+			# obs_path_y = x + 0*dyn_obs[o][3]*time_arr*np.sin(new_theta)
 			traj = np.vstack((obs_path_x, obs_path_y)).T
 			# print(traj)
 			# quit()
@@ -135,7 +138,7 @@ def run():
 		# print(obs_pos_frenet)
 
 		for i in range(len(obs_pos_frenet)):
-			plt.scatter(obs_poses[i][:,0],obs_poses[i][:,1],color='black', alpha=0.7)
+			plt.scatter(obs_poses[i][:,0],obs_poses[i][:,1],color='grey')
 
 		obs_pos_frenet = np.array(obs_pos_frenet)
 		# print(obs_pos_frenet[0])
@@ -146,9 +149,11 @@ def run():
 		# sampler = Goal_Sampler(torch.tensor([0,0,np.deg2rad(ego_theta)]), 4.0, 0.0, obstacles=obs_pos_frenet)
 		agent1 = Agent(1, [0,0,np.deg2rad(ego_theta)],[g_path[0, 0],0+30,np.deg2rad(90)], 30)
 		agent1.obstacles = obs_pos_frenet
+		print(obs_pos_frenet)
 		agent1.left_lane_bound = np.median(left_lane_frenet[:, :1])
 		agent1.right_lane_bound = np.median(right_lane_frenet[:, :1])
-		agent1.vl = ca.DM(data["speed"])
+		# agent1.vl = ca.DM(data["speed"]-0.5)
+		agent1.vl = ca.DM(0.0)
 		agent1.avoid_obs = True
 
 		# sampler.initialize()
@@ -168,36 +173,57 @@ def run():
 		print("Planning time: ", time.time()-t1)
 
 		trajectory = np.array(agent1.X0.full()).T
+		print(trajectory)
 		# print(mean_controls)
 		global_trajectory, controls = frenet_to_global_with_traj(trajectory, new_g_path, interpolated_g_path, 0.1)
+
+		sampler = Goal_Sampler(torch.tensor([0, 0, np.deg2rad(90)]), 0, 0, obstacles=obs_pos_frenet, num_particles = 100)
+		sampler.num_particles = 100
+		sampler.mean_action = controls
+		sampler.left_lane_bound = np.median(left_lane_frenet[:, :1])
+		sampler.right_lane_bound = np.median(right_lane_frenet[:, :1])
+		sampler.infer_traj()
+
+		tic = time.time()
+		best_controls = sampler.top_controls[0,:,:] # contains the best v and w
+		best_traj = sampler.top_trajs[0,:,:] # contains the best x, y and theta
+
+		best_traj = best_traj.detach().cpu().numpy()
+		best_controls = best_controls.detach().cpu().numpy()
 		np.save(mean_save_filename,controls)
 		
 		## plot
 		# for k in range(g_path.shape[0]):
-		plt.scatter(g_path[:,0],g_path[:,1],color='blue', alpha=0.1)
+		plt.scatter(g_path[:,0],g_path[:,1],color='blue', alpha=0.1, label="Global Path")
 
-		x_car, y_car = draw_circle(0, 0, 1.80)
-		plt.plot(x_car,y_car,'g')
+		# x_car, y_car = draw_circle(0, 0, 1.80)
+		# plt.plot(x_car,y_car,'g')
+		rect = Rectangle((-0.965, -2.345), 1.93, 4.69, linewidth=1, edgecolor='r', facecolor='none')
+		plt.gca().add_patch(rect)
 		
 		# for j in range(obs_pos.shape[0]):
 		# print(obs_pos[:][:,0])
 		
 		plt.plot(obs_pos[:,0], obs_pos[:,1], 'k.')
-		if len(obs_pos_frenet) > 0:
-			plt.scatter(dyn_obs[:,1], dyn_obs[:,0], color='orange')
+		# if len(obs_pos_frenet) > 0:
+		# 	plt.scatter(dyn_obs[:,1], dyn_obs[:,0], color='orange')
 			
 		# for j in range(sampler.traj_N.shape[0]):
-		plt.plot(global_trajectory[:, 0], global_trajectory[:, 1], 'blue')
-		plt.plot(left_lane[:,0], left_lane[:,1], 'pink')
-		plt.plot(right_lane[:,0], right_lane[:,1], 'yellow')
+		plt.plot(global_trajectory[:, 0], global_trajectory[:, 1], 'blue', label="NSMPC (Ours)")
+		plt.plot(sampler.top_trajs[0,:,0], sampler.top_trajs[0,:,1], 'green', label="Best Traj")
+		# plt.plot(left_lane[:,0], left_lane[:,1], 'pink')
+		# plt.plot(right_lane[:,0], right_lane[:,1], 'yellow')
 		print("Total time: ", time.time()-t_1)
 		# print(sampler.top_trajs[0,:,:2])
-		plt.savefig(plt_save_file_name)
-		plt.axis('equal')
-		plt.pause(0.001)
-		# plt.show()
+		# plt.axis('equal')
+		plt.xlim(-15, 15)
+		plt.ylim(-15, 15)
+		plt.legend(loc="lower center")
+		plt.savefig(plt_save_file_name, bbox="tight")
+		# plt.pause(0.001)
+		plt.show()
 		plt.clf()
-		# quit()
+		quit()
 
 
 

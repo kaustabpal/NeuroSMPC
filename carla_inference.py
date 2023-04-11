@@ -20,7 +20,7 @@ from pprint import pprint
 
 np.set_printoptions(precision=3, suppress=True)
 
-EXPT_NAME = "GradCEM_static_5-3"
+EXPT_NAME = "NuroMPPI_temporal_5-2"
 
 dataset_dir = "data/experiments/" + EXPT_NAME + "/"
 temp_dir = "data/temp/"
@@ -117,7 +117,8 @@ def run():
             # swap first and second column of best_path
             best_path[:,[0, 1]] = best_path[:,[1, 0]]
 
-            target_speed = np.mean(best_controls[:5,0])
+            # target_speed = np.mean(best_controls[:5,0])
+            target_speed = np.mean(best_controls[:3,0])
             ego_pose = env.ego_pose
             ego_path.append(ego_pose)   # [x,y,z,yaw,pitch,roll]
             target_velocities.append(target_speed)

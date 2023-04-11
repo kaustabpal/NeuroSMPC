@@ -23,11 +23,11 @@ import time
 
 now = datetime.now()
 # dataset_dir = "/scratch/parth.shah/custom_poses_2-20-2023/" + now.strftime("%m-%d-%Y_%H:%M:%S") + "/"
-dataset_dir = "/home/aditya/deb_data/custom_poses/" + now.strftime("%m-%d-%Y_%H:%M:%S") + "/"
+dataset_dir = "/home/aditya/deb_data/next_data/" + now.strftime("%m-%d-%Y_%H:%M:%S") + "/"
 
 
 # temp_dir = "/scratch/parth.shah/temp/"
-temp_dir = "/home/aditya/deb_data/custom_poses/" + now.strftime("%m-%d-%Y_%H:%M:%S") + "/"
+temp_dir = "/home/aditya/deb_data/next_data/temp/" + now.strftime("%m-%d-%Y_%H:%M:%S") + "/"
 
 def handler(signum, frame):
     msg = "Ctrl-c was pressed. Do you want to save? y/n "
@@ -67,7 +67,7 @@ def run():
     # os.makedirs(dataset_dir + "storm", exist_ok=True)
 
     print("setting up Carla-Gym")
-    config_file = "config/env_5-5_config.json"
+    config_file = "config/env_5-2_config.json"
     env = CarEnv(config_file)
 
     print("Starting loop")

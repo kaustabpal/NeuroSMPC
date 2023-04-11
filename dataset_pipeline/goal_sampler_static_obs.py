@@ -301,12 +301,14 @@ class Goal_Sampler:
         tot_time = []
         t1 = time.time()
         self.cov_action = self.init_cov_action
-        for i in range(5):
+        # for i in range(5):
+        for i in range(2):
             self.scale_tril = torch.sqrt(self.cov_action)
             self.full_scale_tril = torch.diag(self.scale_tril)
             self.sample_controls()
             
-            top_w, self.top_controls = self.rollout()
+            # top_w, self.top_controls = self.rollout()
+            top_w, self.top_controls = self.rollout(s_o=10)
             # print("Rollout: ", time.time() - t1)
             self.update_distribution(top_w, self.top_controls)
             # print("Update_Distribution: ", time.time() - t1)
@@ -333,6 +335,7 @@ class Goal_Sampler:
         self.full_scale_tril = torch.diag(self.scale_tril)
         self.sample_controls()
         top_w, self.top_controls = self.rollout(s_o = 2, s_s = 1.0, s_c = 0, s_m = 1)   
+        # top_w, self.top_controls = self.rollout(s_o = 2, s_s = 1.0, s_c = 0, s_m = 0)   
     
     def get_vel(self, u):
         v1 = self.vl

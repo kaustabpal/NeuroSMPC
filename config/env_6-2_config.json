@@ -19,7 +19,7 @@
     "ego" : {
         "blueprint" : "vehicle.tesla.model3",
         "spawn_type" : "fixed",
-        "spawn_point" : [-57.0, 137.0, 0.5],
+        "spawn_point" : [20.0, 133.0, 0.5],
         "stanley" : {
             "L" : 1.9
         },
@@ -59,75 +59,123 @@
     "npc" : [
         {
             "id" : 1,
-            "blueprint" : "vehicle.tesla.model3",
+            "blueprint" : "vehicle.lincoln.mkz_2017",
             "spawn_type" : "relative",
             "control_type" : "waypoint",
-            "spawn_point" : [10.0, 0.0, 0.5],
+            "spawn_point" : [10.0, 1.0, 0.5],
             "target_speed" : 1.0,
-            "distance_to_leading_vehicle" : -5.0,
+            "distance_to_leading_vehicle" : 1.0,
             "ignore_lights_percentage" : 100,
             "ignore_signs_percentage" : 100,
-            "speed_difference_percentage" : 80.0
+            "speed_difference_percentage" : 70.0
         },
         {
             "id" : 2,
-            "blueprint" : "vehicle.tesla.model3",
+            "blueprint" : "vehicle.lincoln.mkz_2020",
             "spawn_type" : "relative",
             "control_type" : "waypoint",
-            "spawn_point" : [20.0, 1.0, 0.5],
+            "spawn_point" : [15.0, 1.0, 0.5],
             "target_speed" : 1.0,
-            "distance_to_leading_vehicle" : -5.0,
+            "distance_to_leading_vehicle" : 1.0,
             "ignore_lights_percentage" : 100,
             "ignore_signs_percentage" : 100,
-            "speed_difference_percentage" : 80.0
+            "speed_difference_percentage" : 70.0
         },
         {
             "id" : 3,
-            "blueprint" : "vehicle.tesla.model3",
+            "blueprint" : "vehicle.audi.tt",
             "spawn_type" : "relative",
             "control_type" : "waypoint",
-            "spawn_point" : [30.0, 0.0, 0.5],
-            "target_speed" : 1.0,
-            "distance_to_leading_vehicle" : -5.0,
+            "spawn_point" : [8.0, 0.0, 0.5],
+            "target_speed" : 1.5,
+            "distance_to_leading_vehicle" : 1.0,
             "ignore_lights_percentage" : 100,
             "ignore_signs_percentage" : 100,
-            "speed_difference_percentage" : 80.0
+            "speed_difference_percentage" : 70.0
         },
         {
             "id" : 4,
-            "blueprint" : "vehicle.tesla.model3",
+            "blueprint" : "vehicle.nissan.micra",
             "spawn_type" : "relative",
             "control_type" : "waypoint",
-            "spawn_point" : [45.0, 1.0, 0.5],
+            "spawn_point" : [40.0, 0.0, 0.5],
             "target_speed" : 1.0,
-            "distance_to_leading_vehicle" : -5.0,
+            "distance_to_leading_vehicle" : 1.0,
             "ignore_lights_percentage" : 100,
             "ignore_signs_percentage" : 100,
-            "speed_difference_percentage" : 80.0
+            "speed_difference_percentage" : 70.0
         },
         {
             "id" : 5,
-            "blueprint" : "vehicle.tesla.model3",
+            "blueprint" : "vehicle.nissan.patrol",
             "spawn_type" : "relative",
             "control_type" : "waypoint",
-            "spawn_point" : [60.0, 0.0, 0.5],
+            "spawn_point" : [55.0, 1.0, 0.5],
             "target_speed" : 1.0,
-            "distance_to_leading_vehicle" : -5.0,
+            "distance_to_leading_vehicle" : 1.0,
             "ignore_lights_percentage" : 100,
             "ignore_signs_percentage" : 100,
-            "speed_difference_percentage" : 80.0
+            "speed_difference_percentage" : 70.0
         },
         {
             "id" : 6,
-            "blueprint" : "vehicle.tesla.model3",
+            "blueprint" : "vehicle.dodge.charger_police",
+            "spawn_type" : "relative",
+            "control_type" : "waypoint",
+            "spawn_point" : [68.0, 0.0, 0.5],
+            "target_speed" : 1.0,
+            "distance_to_leading_vehicle" : 1.0,
+            "ignore_lights_percentage" : 100,
+            "ignore_signs_percentage" : 100,
+            "speed_difference_percentage" : 70.0
+        },
+        {
+            "id" : 7,
+            "blueprint" : "vehicle.ford.mustang",
             "spawn_type" : "relative",
             "control_type" : "waypoint",
             "spawn_point" : [80.0, 1.0, 0.5],
             "target_speed" : 1.0,
-            "distance_to_leading_vehicle" : -5.0,
+            "distance_to_leading_vehicle" : 1.0,
             "ignore_lights_percentage" : 100,
             "ignore_signs_percentage" : 100,
-            "speed_difference_percentage" : 80.0
+            "speed_difference_percentage" : 70.0
+        },
+        {
+            "id" : 8,
+            "blueprint" : "vehicle.mercedes.coupe_2020",
+            "spawn_type" : "relative",
+            "control_type" : "waypoint",
+            "spawn_point" : [93.0, 0.0, 0.5],
+            "target_speed" : 1.0,
+            "distance_to_leading_vehicle" : 1.0,
+            "ignore_lights_percentage" : 100,
+            "ignore_signs_percentage" : 100,
+            "speed_difference_percentage" : 70.0
+        },
+        {
+            "id" : 9,
+            "blueprint" : "vehicle.mini.cooper_s_2021",
+            "spawn_type" : "relative",
+            "control_type" : "waypoint",
+            "spawn_point" : [98.0, 0.0, 0.5],
+            "target_speed" : 1.0,
+            "distance_to_leading_vehicle" : 1.0,
+            "ignore_lights_percentage" : 100,
+            "ignore_signs_percentage" : 100,
+            "speed_difference_percentage" : 70.0
+        },
+        {
+            "id" : 10,
+            "blueprint" : "vehicle.volkswagen.t2",
+            "spawn_type" : "relative",
+            "control_type" : "waypoint",
+            "spawn_point" : [93.0, 1.0, 0.5],
+            "target_speed" : 1.0,
+            "distance_to_leading_vehicle" : 1.0,
+            "ignore_lights_percentage" : 100,
+            "ignore_signs_percentage" : 100,
+            "speed_difference_percentage" : 70.0
         }
     ]
 }

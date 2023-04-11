@@ -22,11 +22,12 @@ class GradCEM:
         self.left_lane_bound = -4.5
         self.right_lane_bound = 4.5
         self.c_state = c_state # start state
+        self.global_lane = None
         # self.c_state.device = self.device
         self.c_state.requires_grad = True
         # self.g_state = g_state # goal state
         self.step_size_mean = 0.7
-        self.step_size_cov = 0.2
+        self.step_size_cov = 0.1
         self.avoid_obs = False
         self.vl = vl
         self.wl = wl
@@ -173,19 +174,20 @@ class GradCEM:
         self.controls_N = act_seq
         # print(self.controls_N.requires_grad)
         self.controls_N.requires_grad = True
-        # print(self.controls_N.requires_grad)
+        # print(self.controls_N.requires_grad)s
         
         
         # print(act_seq.shape, self.controls_N.shape)
         # return act_seq
         
-    def rollout(self, s_o = 10, s_s = 0.1, s_c = 1, s_m = 0):
+    def rollout(self, s_o = 10, s_s = 1, s_c = 0.1, s_m = 0, s_l = 0):
         # print(self.num_particles)
         # print(self.controls_N.shape[0])
         t_r = time.time()
         self.goal_region_cost_N = torch.zeros((self.traj_N.shape[0]), device=self.device)
         self.left_lane_bound_cost_N = torch.zeros((self.traj_N.shape[0]), device=self.device)
         self.right_lane_bound_cost_N = torch.zeros((self.traj_N.shape[0]), device=self.device)
+        self.global_lane_cost_N = torch.zeros((self.traj_N.shape[0]), device=self.device)
         left_lane_bound = -4.5
         right_lane_bound = 4.5
         # self.in_balls_cost_N = torch.zeros((self.traj_N.shape[0]))
@@ -228,8 +230,8 @@ class GradCEM:
             # center-line cost
             self.center_line_cost_N[i] += torch.linalg.norm(self.traj_N[i,:,0]-0)
 
-            left_lane_cost = 1000*torch.ones(self.traj_N[i,self.traj_N[i,:,0]<(self.left_lane_bound+1.5),0].shape)
-            right_lane_cost = 1000*torch.ones(self.traj_N[i,self.traj_N[i,:,0]>(self.right_lane_bound-1.5),0].shape)
+            left_lane_cost = s_l*torch.ones(self.traj_N[i,self.traj_N[i,:,0]<(self.left_lane_bound+1.5),0].shape)
+            right_lane_cost = s_l*torch.ones(self.traj_N[i,self.traj_N[i,:,0]>(self.right_lane_bound-1.5),0].shape)
             self.left_lane_bound_cost_N[i] = torch.sum(left_lane_cost) 
             self.right_lane_bound_cost_N[i] = torch.sum(right_lane_cost) 
             
@@ -238,6 +240,9 @@ class GradCEM:
             threshold_dist = self.radius + self.obst_radius
             d_to_o = torch.cdist(self.traj_N[i,:,:2], torch.tensor(self.obstacles,dtype=torch.float32,device=self.device), p=2)
             self.collision_cost_N[i] += torch.sum((d_to_o<threshold_dist).type(torch.float32))
+
+            d_to_gp = torch.cdist(self.traj_N[i,:,:2], torch.tensor(self.global_lane,dtype=torch.float32,device=self.device), p=2)
+            self.global_lane_cost_N[i] = torch.sum(torch.min(d_to_gp, axis=1)[0])
             # quit()
             # for o in self.obstacles:
             #     dist = torch.linalg.norm(self.traj_N[i,:,:2]-torch.from_numpy(o)[:2]*torch.ones(self.horizon+1,2),axis = 1)
@@ -252,7 +257,8 @@ class GradCEM:
         # print("Rollout time: ",np.sum(t))
         # print("Free balls time: ",np.sum(t_2))
         # print("Lane boundary time: ",np.sum(t_3))
-        # print("Obstacle avoidance time: ",np.sum(t_4))
+        # print("Obstacle avoidance time: ",np.sum(t_4ptimizer.zero_grad()
+        # self.total))
         
                                                         
             # radius = 3.5
@@ -263,14 +269,14 @@ class GradCEM:
             #     self.goal_region_cost_N[i] = copy.deepcopy(dist)
             
         self.total_cost_N = s_s*self.ang_vel_cost_N + s_o*self.collision_cost_N + s_c*self.center_line_cost_N + \
-            s_m*self.dist_to_mean_cost_N + self.left_lane_bound_cost_N + self.right_lane_bound_cost_N
+            s_m*self.dist_to_mean_cost_N + self.left_lane_bound_cost_N + self.right_lane_bound_cost_N + 100*self.global_lane_cost_N
         
     def update_distribution(self):    
         # print(self.controls_N.grad)
-        self.optimizer.zero_grad()
-        self.total_cost_N.sum().backward()
+        # self.optimizer.zero_grad()
+        # self.total_cost_N.sum().backward()
         # print(self.controls_N.grad)
-        self.optimizer.step()
+        # self.optimizer.step()
         top_values, top_idx = torch.topk(self.total_cost_N, self.top_K, largest=False, sorted=True)
         self.top_trajs = torch.index_select(self.traj_N, 0, top_idx)
         self.top_controls = torch.index_select(self.controls_N, 0, top_idx)
@@ -303,7 +309,7 @@ class GradCEM:
         self.cov_action = self.init_cov_action
         self.scale_tril = torch.sqrt(self.cov_action)
         self.full_scale_tril = torch.diag(self.scale_tril)
-        for i in range(5):
+        for i in range(1):
             # print(i)
             # self.scale_tril = torch.sqrt(self.cov_action)
             # self.full_scale_tril = torch.diag(self.scale_tril)
@@ -344,7 +350,7 @@ class GradCEM:
         self.scale_tril = torch.sqrt(self.cov_action)
         self.full_scale_tril = torch.diag(self.scale_tril)
         self.sample_controls()
-        self.rollout(s_o = 2, s_s = 1, s_c = 0, s_m = 1)   
+        self.rollout(s_o = 1, s_s = 0, s_c = 0, s_m = 1)   
     
     def get_vel(self, u):
         v1 = self.vl

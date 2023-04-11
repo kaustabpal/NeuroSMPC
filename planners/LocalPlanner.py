@@ -3,6 +3,9 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
+
+import casadi as ca
 
 import torch
 
@@ -10,10 +13,11 @@ from nn.model import Model1, Model_Temporal
 from dataset_pipeline.goal_sampler_dyn_obs_lane_change import Goal_Sampler as Goal_Sampler_Dyn
 from dataset_pipeline.goal_sampler_static_obs import Goal_Sampler
 from dataset_pipeline.grad_cem import GradCEM
+from dataset_pipeline.casadi_code import Agent
 
 from dataset_pipeline.utils import rotate, draw_circle
 
-from dataset_pipeline.frenet_transformations import global_traj, global_to_frenet, frenet_to_global
+from dataset_pipeline.frenet_transformations import global_traj, global_to_frenet, frenet_to_global, global_to_frenet_lane, frenet_to_global_with_traj
 import cv2
 
 import os
@@ -92,6 +96,8 @@ class LocalPlanner:
         if self.expt_type == "temporal":
             if self.planner_type == "NuroMPPI":
                 return self.generate_path_nuromppi_dyn(obstacle_array, dyn_obs, global_path, current_speed, left_lane, right_lane)
+            elif self.planner_type == "Casadi":
+                return self.generate_path_casadi(obstacle_array, dyn_obs, global_path, current_speed, left_lane, right_lane)
         elif self.expt_type == "static":                
             if self.planner_type == "NuroMPPI":
                 return self.generate_path_nuromppi(obstacle_array, global_path, current_speed)
@@ -182,6 +188,119 @@ class LocalPlanner:
         sampler = Goal_Sampler_Dyn(torch.tensor([0, 0, np.deg2rad(90)]), 4.13, 0, obstacles=obstacle_positions_dyn, num_particles = 100)
         sampler.num_particles = 100
         sampler.mean_action = mean_action_cpu
+        sampler.left_lane_bound = left_lane
+        sampler.right_lane_bound = right_lane
+        sampler.infer_traj()
+        toc = time.time()
+        self.time_info["sampler"] = toc-tic
+        
+        tic = time.time()
+        best_controls = sampler.top_controls[0,:,:] # contains the best v and w
+        best_traj = sampler.top_trajs[0,:,:] # contains the best x, y and theta
+
+        best_traj = best_traj.detach().cpu().numpy()
+        best_controls = best_controls.detach().cpu().numpy()
+        toc = time.time()
+        self.time_info["postprocess"] = toc-tic
+
+        tic = time.time()
+        if self.visualize or self.save:
+            self.plotter(obstacle_positions, g_path, sampler, 2.5, current_speed, obstacle_positions_dyn)
+        toc = time.time()
+        self.time_info["plot"] = toc-tic
+
+        toc_ = time.time()
+        self.time_info["total"] = toc_-tic_
+        return best_traj, best_controls, 1
+    
+    def generate_path_casadi(self, obstacle_array, dyn_obs, global_path, current_speed, left_lane, right_lane):
+        tic_ = time.time()
+        tic = time.time()
+        ego_speed = current_speed
+
+        # Process global path
+        global_path_orig = np.copy(global_path)        
+
+        global_path[:,0] = -global_path[:,0] + 256 # global path points
+        global_path = global_path.astype(np.int32)
+        global_path = global_path[np.where((global_path[:, 0] < 256) & (global_path[:, 1] < 256) & (global_path[:, 0] >= 0) & (global_path[:, 1] >= 0) )]
+        
+        global_path_array = np.zeros((256, 256))
+        global_path_array[global_path[:,0], global_path[:,1]] = 255
+    
+        g_path = global_path_orig - [256/2,256/2] # global path points
+        g_path = g_path[:, [1,0]]*30/256
+
+        obstacle_array = np.copy(obstacle_array)
+
+        # g_path = global_path -[256/2,256/2] # global path points
+        # g_path = g_path[:, [1,0]]*30/256
+
+        new_global_path, interpolated_global_path, theta = global_traj(g_path, 0.1)
+
+        # left_lane_frenet = global_to_frenet_lane(left_lane, new_global_path, interpolated_global_path)
+        # right_lane_frenet = global_to_frenet_lane(right_lane, new_global_path, interpolated_global_path)
+
+        ego_theta = np.rad2deg(np.pi/2 + (np.pi/2 - theta[0]))
+
+        # Process obstacles
+        obs_poses = []
+        for o in range(len(dyn_obs)):
+            print(dyn_obs[o])
+            y, x = dyn_obs[o][1], dyn_obs[o][0]
+            rel_yaw = dyn_obs[o][2] - np.pi/2
+            rel_yaw = np.pi/2 - rel_yaw
+            new_theta = rel_yaw + np.deg2rad(-dyn_obs[o][4])*self.time_arr
+            obs_path_x = y + dyn_obs[o][3]*self.time_arr*np.cos(new_theta)
+            obs_path_y = x + dyn_obs[o][3]*self.time_arr*np.sin(new_theta)
+            traj = np.vstack((obs_path_x, obs_path_y)).T
+            obs_poses.append(traj)
+        obstacle_positions_dyn = np.array(obs_poses)
+        obstacle_positions = np.array(self.to_continuous(obstacle_array))
+        obs_pos_frenet = []
+        for i in range(len(dyn_obs)):
+            obs_traj = global_to_frenet(obs_poses[i], new_global_path, interpolated_global_path)
+            obs_pos_frenet.append(obs_traj)
+        obs_pos_frenet = np.array(obs_pos_frenet)
+        toc = time.time()
+        self.time_info["preprocess"] = toc-tic
+
+        #Finding the best trajectory
+        # print("dyn obe = ", obstacle_positions_dyn)
+        tic = time.time()
+        # print(g_path[0, 0])
+        # print()
+        # print(ego_theta)
+        # print()
+        # print(obs_pos_frenet)
+        # print()
+        # print(obs_poses[i])
+        # print()
+        # print(left_lane, right_lane)
+        # print()
+        agent1 = Agent(1, [0,0,np.deg2rad(ego_theta)],[g_path[0, 0],0+30,np.deg2rad(90)], 30)
+        agent1.obstacles = obs_pos_frenet
+        agent1.left_lane_bound = left_lane
+        agent1.right_lane_bound = right_lane
+        agent1.vl = ca.DM(current_speed-0.5)
+        agent1.avoid_obs = True
+        agent1.pred_controls()
+        toc = time.time()
+        self.time_info["sampler"] = toc-tic
+        
+        tic = time.time()
+        trajectory = np.array(agent1.X0.full()).T
+		# print(mean_controls)
+        global_trajectory, controls = frenet_to_global_with_traj(trajectory, new_global_path, interpolated_global_path, 0.1)
+        toc = time.time()
+        self.time_info["postprocess"] = toc-tic
+
+        #Finding the best trajectory
+        # print("dyn obe = ", obstacle_positions_dyn)
+        tic = time.time()
+        sampler = Goal_Sampler_Dyn(torch.tensor([0, 0, np.deg2rad(90)]), 0, 0, obstacles=obstacle_positions_dyn, num_particles = 100)
+        sampler.num_particles = 100
+        sampler.mean_action = controls
         sampler.left_lane_bound = left_lane
         sampler.right_lane_bound = right_lane
         sampler.infer_traj()
@@ -419,9 +538,11 @@ class LocalPlanner:
         plt.clf()
         
         # Car
-        x_car, y_car = draw_circle(0, 0, ego_radius)
-        plt.plot(x_car,y_car,'g')
-        plt.text(0, 0, "v = {}".format(np.round(current_speed, 2)), color='g')
+        # x_car, y_car = draw_circle(0, 0, ego_radius)
+        # plt.plot(x_car,y_car,'g')
+        rect = Rectangle((-0.965, -2.345), 1.93, 4.69, linewidth=1, edgecolor='r', facecolor='none')
+        plt.gca().add_patch(rect)
+        # plt.text(0, 0, "v = {}".format(np.round(current_speed, 2)), color='g')
 
         # Global path
         plt.scatter(global_path[:,0],global_path[:,1],color='blue', alpha=0.1)
@@ -431,15 +552,17 @@ class LocalPlanner:
 
         # All trajectories
         traj_N = sampler.traj_N.detach().cpu().numpy()
-        plt.plot(traj_N[:,:,0], traj_N[:,:,1], '.b', markersize=1, alpha=0.04)
+        plt.plot(traj_N[:,:,0], traj_N[:,:,1], '.r', markersize=1, alpha=0.1)
 
         # Predicted trajectory
-        plt.plot(traj_N[-2,:,0], traj_N[-2,:,1], 'red', markersize=3, label = "Predicted")
+        # plt.plot(traj_N[-2,:,0], traj_N[-2,:,1], 'red', markersize=3, label = "Predicted")
+        plt.plot(traj_N[-2,:,0], traj_N[-2,:,1], 'blue', markersize=3, label = "Predicted")
 
         if self.planner_type != "GradCEM":
             # Best trajectory
             top_trajs = sampler.top_trajs.detach().cpu().numpy()
-            plt.plot(top_trajs[0,:,0], top_trajs[0,:,1], 'lime', markersize=2, label = "best traj")
+            # plt.plot(top_trajs[0,:,0], top_trajs[0,:,1], 'lime', markersize=2, label = "Best Traj")
+            plt.plot(top_trajs[0,:,0], top_trajs[0,:,1], 'lime', markersize=2, label = "Best Traj")
         
         if obs_poses is not None:
             for i in range(len(obs_poses)):

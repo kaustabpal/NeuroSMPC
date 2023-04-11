@@ -67,7 +67,7 @@
             "blueprint" : "vehicle.tesla.model3",
             "spawn_type" : "relative",
             "control_type" : "waypoint",
-            "spawn_point" : [10.0, 1.0, 0.5],
+            "spawn_point" : [24.0, 1.0, 0.5],
             "target_speed" : 1.0,
             "distance_to_leading_vehicle" : -5.0,
             "ignore_lights_percentage" : 100,

@@ -28,7 +28,7 @@ class Agent:
     def __init__(self, agent_id, i_state, g_state, N=50, obstacles=[]):
         self.sensor_radius = 50
         self.id = agent_id
-        self.radius = 1.0
+        self.radius = 1.25
         self.obst_radius = 1.0
         self.i_state = np.array(i_state)
         self.g_state = np.array(g_state)
@@ -126,7 +126,8 @@ class Agent:
                 o_st = o_X[i, :]
                 dist = ca.sqrt((a_st[1] - o_st[1]) ** 2 + (a_st[0] - o_st[0]) ** 2)
                 self.g = ca.vertcat(self.g, dist)
-                self.lbg = ca.vertcat(self.lbg, 3.0)
+                self.lbg = ca.vertcat(self.lbg, 3.2)
+                # self.lbg = ca.vertcat(self.lbg, 3.9)
                 self.ubg = ca.vertcat(self.ubg, ca.inf)
 
     def lane_boundary_constraints(self):
